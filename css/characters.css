@@ -1,0 +1,280 @@
+.character-side-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  transition: transform 0.2s;
+  z-index: 1;
+}
+
+/* The character sits on the inside edge of its column. */
+#cole-card {
+  grid-column: 1;
+  grid-row: 1;
+  align-items: flex-end;
+  margin: 0;
+  padding: 0;
+}
+
+#ellie-card {
+  grid-column: 3;
+  grid-row: 1;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+}
+
+.character-side-card.drag-over {
+  transform: scale(1.04);
+}
+
+#shimeji-cole {
+  width: clamp(60px, 13.75cqw, 110px);
+  height: clamp(60px, 13.75cqw, 110px);
+  align-self: flex-end;
+}
+
+#shimeji-ellie {
+  width: clamp(66px, 15.125cqw, 121px);
+  height: clamp(66px, 15.125cqw, 121px);
+  align-self: flex-start;
+}
+
+.shimeji-avatar {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: transform 0.2s;
+  outline: none;
+  flex: 0 0 auto;
+}
+
+.shimeji-avatar:hover { transform: scale(1.06); }
+.shimeji-avatar:focus-visible { transform: scale(1.06); }
+
+.shimeji-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.15));
+  pointer-events: none;
+}
+
+/* Middle column: the two bubbles are a vertical stack. */
+.speech-bubble-container {
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: clamp(3px, 0.75cqw, 7px);
+  position: relative;
+  z-index: 2;
+}
+
+.speech-bubble-wrapper {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex: 0 0 auto;
+}
+
+/* Never hide one bubble because the other one is speaking. */
+.speech-bubble-container > .speech-bubble-wrapper:first-child,
+.speech-bubble-container > .speech-bubble-wrapper:last-child {
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.speech-bubble-box {
+  display: none;
+  position: relative;
+  width: fit-content;
+  max-width: 96%;
+  height: auto !important;
+  white-space: pre-wrap;
+  padding: clamp(4px, 0.75cqw, 7px) clamp(5px, 1cqw, 9px);
+  border-radius: clamp(7px, 1.25cqw, 10px);
+  font-size: clamp(8px, 1.375cqw, 11px);
+  font-weight: 600;
+  text-align: center;
+  word-break: keep-all;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  z-index: 10;
+}
+
+@keyframes bubblePop {
+  0% { opacity: 0; transform: scale(0.85) translateY(5px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+#bubble-cole {
+  margin: 0;
+  background: #ffffff;
+  border: 2px solid #ffffff;
+  color: #3f548a;
+  text-align: center;
+}
+
+#bubble-cole::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: -8px;
+  border-width: 4px 8px 4px 0;
+  border-style: solid;
+  border-color: transparent #ffffff;
+  display: block;
+}
+
+#bubble-ellie {
+  margin: 0;
+  background: #ffffff;
+  border: 2px solid #ffffff;
+  color: #3E6B75;
+  text-align: center;
+}
+
+#bubble-ellie::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: -8px;
+  border-width: 4px 0 4px 8px;
+  border-style: solid;
+  border-color: transparent #ffffff;
+  display: block;
+}
+
+.card-btn-group {
+  display: flex;
+  gap: clamp(3px, 0.75cqw, 5px);
+  margin-top: clamp(2px, 0.8cqw, 6px);
+  width: auto;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-icon-btn {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: clamp(15pt, 2.7cqw, 20pt) !important;
+  font-weight: bold !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  line-height: 1;
+  padding: 0 !important;
+}
+
+.action-icon-btn:hover { transform: scale(1.15); }
+.action-icon-btn:focus-visible { transform: scale(1.15); }
+#cole-card .action-icon-btn { color: #3f548a; }
+#ellie-card .action-icon-btn { color: #3E6B75; }
+
+.item-container {
+  width: 64%;
+  min-width: 0;
+  container-type: inline-size;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.item-btn {
+  width: min(21.6cqw, 54px);
+  aspect-ratio: 1;
+  height: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  flex: 0 0 auto;
+}
+
+.item-btn:hover { transform: scale(1.3); }
+.item-btn:focus-visible { transform: scale(1.3); outline: none; }
+.item-btn:active { cursor: grabbing; }
+
+.item-btn img {
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.heart {
+  position: absolute;
+  font-size: clamp(14px, 2.2cqw, 18px);
+  font-weight: bold;
+  animation: floatUp 0.8s ease-out forwards;
+  pointer-events: none;
+  z-index: 20;
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(0.8); }
+  50% { opacity: 0.9; transform: translateY(-12px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-25px) scale(1); }
+}
+
+.guide-bubble {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 110%;
+  max-width: 220px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #ffffff 30%, rgba(255, 255, 255, 0.5) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  padding: 20px 3px;
+  font-size: clamp(9px, 1.45cqw, 12px);
+  font-weight: 600;
+  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
+  word-break: keep-all;
+  white-space: pre-wrap;
+  z-index: 30;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+  opacity: 1;
+}
+
+.guide-bubble.fade-out { opacity: 0; }

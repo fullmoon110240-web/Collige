@@ -1,0 +1,9 @@
+{
+  "name": "colliji-character-supabase",
+  "private": true,
+  "version": "1.0.0",
+  "description": "콜리지 놀이 캐릭터/아이템 웹 UI with Supabase",
+  "scripts": {
+    "check:js": "node tools/check-js.mjs"
+  }
+}
