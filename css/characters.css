@@ -65,7 +65,8 @@
 /* The center column is intentionally narrower than the two character columns. */
 .speech-bubble-container {
   grid-column: 2;
-  width: 100%;
+  width: 80%; /* 👇 100%에서 줄임 */
+  margin-inline: auto; /* 👇 좌우 여백을 균등하게 배분하여 가운데 정렬 */
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -91,7 +92,7 @@
   width: 100%;
   max-width: 100%;
   height: auto !important;
-  padding: clamp(5px, 0.9cqw, 8px) clamp(7px, 1.15cqw, 10px);
+  padding: clamp(12px, 2.2cqw, 20px) clamp(10px, 1.5cqw, 14px);
   border-radius: clamp(7px, 1.25cqw, 10px);
   font-size: clamp(12px, 2cqw, 16.5px);
   font-weight: 600;
@@ -111,7 +112,7 @@
 }
 
 #bubble-cole {
-  top: 0;
+  top: 10cqw;
   left: 0;
   margin: 0;
   background: #ffffff;
@@ -132,7 +133,7 @@
 
 #bubble-ellie {
   right: 0;
-  bottom: 0;
+  bottom: 10cqw;
   margin: 0;
   background: #ffffff;
   border: 2px solid #ffffff;
@@ -186,6 +187,8 @@
 
 .item-container {
   container-type: inline-size;
+  width: 69%;
+  margin-inline: auto;
   min-width: 0;
   padding: 0;
   background: transparent !important;
@@ -220,8 +223,8 @@
 
 .item-btn img {
   display: block;
-  width: 90%;
-  height: 90%;
+  width: 70%;
+  height: 70%;
   object-fit: contain;
   max-width: 100%;
   max-height: 100%;
@@ -230,7 +233,7 @@
 
 .heart {
   position: absolute;
-  font-size: clamp(14px, 2.2cqw, 18px);
+  font-size: clamp(20px, 3.5cqw, 28px);
   font-weight: bold;
   animation: floatUp 0.8s ease-out forwards;
   pointer-events: none;
@@ -258,7 +261,7 @@
   -webkit-text-fill-color: transparent;
   text-align: center;
   padding: 14px 2px;
-  font-size: clamp(9px, 1.35cqw, 12px);
+  font-size: clamp(14px, 2.7cqw, 20px);
   font-weight: 600;
   text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
   word-break: keep-all;
