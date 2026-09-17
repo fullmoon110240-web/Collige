@@ -71,25 +71,23 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: flex-end;
-  gap: clamp(3px, 0.75cqw, 7px);
+  justify-content: stretch;
+  gap: 0;
   position: relative;
   z-index: 2;
-  align-self: end;
+  align-self: stretch;
+  overflow: visible;
 }
 
 .speech-bubble-wrapper {
   width: 100%;
   min-height: 0;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  flex: 0 0 auto;
+  display: contents;
 }
 
 .speech-bubble-box {
   display: none;
-  position: relative;
+  position: absolute;
   width: 100%;
   max-width: 100%;
   height: auto !important;
@@ -113,6 +111,8 @@
 }
 
 #bubble-cole {
+  top: 0;
+  left: 0;
   margin: 0;
   background: #ffffff;
   border: 2px solid #ffffff;
@@ -131,6 +131,8 @@
 }
 
 #bubble-ellie {
+  right: 0;
+  bottom: 0;
   margin: 0;
   background: #ffffff;
   border: 2px solid #ffffff;
@@ -151,7 +153,7 @@
 .card-btn-group {
   display: flex;
   width: 100%;
-  gap: clamp(3px, 0.75cqw, 5px);
+  gap: clamp(4px, 1cqw, 8px);
   margin-top: clamp(2px, 0.8cqw, 6px);
   background: transparent !important;
   border: none !important;
@@ -166,7 +168,7 @@
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
-  font-size: clamp(15pt, 2.7cqw, 20pt) !important;
+  font-size: clamp(27pt, 4.86cqw, 36pt) !important;
   font-weight: bold !important;
   cursor: pointer;
   display: inline-flex;
@@ -198,7 +200,7 @@
 
 .item-btn {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 1.25 / 1;
   height: auto;
   background: transparent;
   border: none;
@@ -218,8 +220,8 @@
 
 .item-btn img {
   display: block;
-  width: 72%;
-  height: 72%;
+  width: 90%;
+  height: 90%;
   object-fit: contain;
   max-width: 100%;
   max-height: 100%;
@@ -246,8 +248,10 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 78%;
+  width: 72%;
   max-width: 180px;
+  max-height: 60%;
+  overflow: hidden;
   box-sizing: border-box;
   background: linear-gradient(135deg, #ffffff 30%, rgba(255, 255, 255, 0.5) 100%);
   -webkit-background-clip: text;

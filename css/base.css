@@ -50,6 +50,7 @@ button {
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
+  gap: 0;
   flex: 0 0 auto;
   overflow: visible;
 }
@@ -70,9 +71,10 @@ button {
 }
 
 .item-container {
-  width: 38%;
+  width: 100%;
   align-self: center;
   margin: 0;
+  flex: 0 0 auto;
 }
 
 .loading-overlay {
