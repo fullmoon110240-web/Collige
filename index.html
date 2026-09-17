@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>콜리지 놀이 (웹 버전)</title>
+  <!-- Supabase CDN 로드 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --cole-color: #3f548a;
+      --ellie-color: #a04d53;
+      --bg-color: #f7f9fc;
+      --card-bg: #ffffff;
+      --text-main: #333333;
+      --border-light: #e2e8f0;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* ================= 로딩 오버레이 ================= */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    }
+    .loading-overlay.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .loading-card {
+      text-align: center;
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-light);
+      border-top: 4px solid var(--cole-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .loading-message {
+      font-size: 13px;
+      color: #666;
+    }
+
+    /* ================= 커서 이미지 ================= */
+    .cursor-image.hidden {
+      display: none;
+    }
+
+    /* ================= 캐릭터 영역 ================= */
+    .shimeji-section {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 30px;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 40px;
+    }
+
+    .character-side-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .shimeji-avatar {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--card-bg);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 4px solid transparent;
+    }
+    .shimeji-avatar:hover {
+      transform: scale(1.05) translateY(-5px);
+    }
+    #shimeji-cole { border-color: var(--cole-color); }
+    #shimeji-ellie { border-color: var(--ellie-color); }
+    
+    .shimeji-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .action-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: var(--card-bg);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 16px;
+      font-weight: bold;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .action-icon-btn:hover {
+      background: #f0f0f0;
+      transform: translateY(-2px);
+    }
+
+    /* ================= 말풍선 영역 ================= */
+    .speech-bubble-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      min-width: 220px;
+      position: relative;
+      min-height: 130px;
+    }
+
+    .guide-bubble {
+      position: absolute;
+      background: var(--card-bg);
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #666;
+      transition: opacity 0.5s ease;
+    }
+    .guide-bubble.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .speech-bubble-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .speech-bubble-box {
+      display: none;
+      background: var(--card-bg);
+      padding: 12px 18px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      font-size: 14px;
+      font-weight: 500;
+      max-width: 200px;
+      word-break: keep-all;
+      text-align: center;
+      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #bubble-cole { border: 2px solid var(--cole-color); color: var(--cole-color); }
+    #bubble-ellie { border: 2px solid var(--ellie-color); color: var(--ellie-color); }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* ================= 아이템 영역 ================= */
+    .item-container {
+      display: flex;
+      gap: 15px;
+      background: var(--card-bg);
+      padding: 15px 25px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      margin-top: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .item-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: grab;
+      border: 2px solid var(--border-light);
+      transition: all 0.2s ease;
+      background: #fafafa;
+    }
+    .item-btn:active { cursor: grabbing; }
+    .item-btn:hover {
+      border-color: #aaa;
+      transform: translateY(-3px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .item-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ================= 모달 (공통) ================= */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-card {
+      background: var(--card-bg);
+      width: 90%;
+      max-width: 450px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      max-height: 80vh;
+      overflow: hidden;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      font-weight: 700;
+      font-size: 16px;
+      background: #fcfcfc;
+    }
+
+    .modal-header-btns {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .header-action-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      background: var(--cole-color);
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .header-action-btn:hover { opacity: 0.9; }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      color: #888;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .modal-close-btn:hover { color: #333; }
+
+    .modal-body {
+      list-style: none;
+      margin: 0;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ================= 대사 & 표정 리스트 ================= */
+    .quote-row, .expression-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      background: #f8f9fb;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border-light);
+      gap: 15px;
+    }
+    
+    .quote-text {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-all;
+    }
+
+    .quote-actions, .expression-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .quote-tag-btn, .quote-action-btn, .delete-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .quote-tag-btn.default-tag { background: #e2e8f0; color: #555; }
+    .quote-tag-btn.default-tag:hover { background: #cbd5e1; }
+    
+    .active-tag.cole-tag { background: #ebf0f9; border: 1px solid var(--cole-color); color: var(--cole-color); }
+    .active-tag.ellie-tag { background: #fdf2f3; border: 1px solid var(--ellie-color); color: var(--ellie-color); }
+
+    .quote-action-btn { background: #f1f5f9; color: #475569; }
+    .quote-action-btn:hover { background: #e2e8f0; }
+
+    .delete-btn { background: #fee2e2; color: #ef4444; font-weight: bold; padding: 6px 8px; }
+    .delete-btn:hover { background: #fca5a5; }
+
+    /* ================= 입력폼 모달 ================= */
+    .modal-input-box, .expression-input-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px;
+    }
+
+    .modal-input-box input, .expression-input-box input {
+      padding: 12px 14px;
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .modal-input-box input:focus, .expression-input-box input:focus {
+      border-color: var(--cole-color);
+    }
+
+    .modal-input-box button, .expression-input-box button {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: var(--cole-color);
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .modal-input-box button:hover, .expression-input-box button:hover { opacity: 0.9; }
+
+    /* 엘리 테마 버튼 동적 클래스 */
+    .ellie-theme-btn { background-color: var(--ellie-color) !important; }
+    .modal-input-box input:focus.ellie-theme, .expression-input-box input:focus.ellie-theme {
+      border-color: var(--ellie-color);
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+    }
+
+    /* ================= 선택 리스트 (표정/아이템) ================= */
+    .expression-select-item {
+      padding: 12px 16px;
+      background: #f8f9fb;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+      border: 1px solid var(--border-light);
+    }
+    .expression-select-item:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .expression-select-item.default-tag { font-weight: bold; color: #64748b; }
+
+    /* ================= 아이템 상세 정보 ================= */
+    .item-modal-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    .item-modal-img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .item-modal-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .item-modal-desc {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.6;
+      word-break: keep-all;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 로딩 화면 -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-title">데이터를 불러오는 중...</div>
+      <div id="loading-message" class="loading-message">잠시만 기다려 주세요</div>
+    </div>
+  </div>
+
+  <!-- 캐릭터 영역 -->
+  <div class="shimeji-section">
+    <div id="cole-card" class="character-side-card">
+      <div id="shimeji-cole" class="shimeji-avatar" title="콜">
+        <img id="img-cole" src="https://lh3.googleusercontent.com/rd-d/ALs6j_GaW_1qu8tyrn3AX86-v-XRqdWdpn_DZPtkvyPdlgxgvn_P8WxJ6ei4aAmRDq8CrWx1SS_442UYe4lqe-GQmKDnyNHTG-L7t52vfEF0ZKoPDF31tYsZOwG6qomXV2cCTwFhD2Ix9z0XETDXC5sVMIzQwQD3OW2OqfgWNRmKU2eytb5OI8TRGcrmNUHYEg7AOQcZp6_aKrE6SAX4L0GGT9H2mN8Vd0gDRummNGrmN7a8N4-Az4UXbEAzMJC7SPQoP-0Lwz3eQllCWZrNfqzizpCUMzrdTZxoxypw9vcKBARs29TtBD3mWako19gtBSzNkSrbVsTL01eXgY4pJIXAlVMC9CjAxzIowc3ctPk_NXcBVnrBPJp7heAmZs3PZjlulWrEHOIWG9rzhPZ5SBi3lybYCD8hATPRkVZranbrCD-A4-R3Ok2Hl73Xt1MpXYgz_xGL-mcbNkn-ZwqRDu_DmjpRf_3IpU163bTUiUTdSrA4_OVnbTJT7oOUSbfE_KxbAD5rO3iU-1hI21IqQ59vbsd89Jz1Y6Lulh8qsi9iyJ-tsELG9udA4N1SqrHAyw8CVkw99pKluEBYrtNdyL7paawRONkC9lGEeXEovFHEAxpKBqaydy5vTIyg1NIV6saltJ62TOfqd3PYMdVcye0S8lF4xxfX_JyIWVqAnygErw-cZ3Cbakzm9v71LXaFWfZwvzY6I_VlDmKSyxLam7Hn_UkZU_CCDc2lyIlY9nPnPComkYJZC9rHgmzxdBCjlB6BK5ZE9cHOFWYzofwozyD5tupUljj0Wg0-YGLzzbnfVu-Pp9sUC0wHdcaDB5DHu3LlRYsJso9zD3clyxt543TW6otREjU1EjUnUaJ4QJY1LjqLyHyPO9lRj5vp322BTJJyaXPSQIhtwVJozUD86wkQQ7fh7_jzeJRBE_xiySVEf4p2U7UHMT-fckZThVwt70ccLnAcMU57Xe1YID2UXsXdpgaIpFvuLGqX9x3K_jEdHAbGTrocHLQzuNkDAF0diSJwnXlwaXZ-7trFM-ISAVU65h1qev01SREd39yDd8I9WSxvRIu97wXpFc12dvKwSzNsXUJOPrejdeBEKCzH0A1IAOHDnAb6Brmc77AiCAszgFmeGUMNFf0DpNePaUjGF0BUvgdc4413DniYmQ=w1084-h909" alt="콜">
+      </div>
+      <div class="card-btn-group">
+        <button id="list-btn-cole" class="action-icon-btn">≡</button>
+        <button id="btn-cole" class="action-icon-btn" title="대사 추가">+</button>
+      </div>
+    </div>
+
+    <div class="speech-bubble-container">
+      <div id="initial-guide-bubble" class="guide-bubble">캐릭터와 ≡ + 를<br>터치해보세요!<br><br>아이템을 터치해<br>상세정보를 볼 수 있습니다.</div>
+      <div class="speech-bubble-wrapper"><div id="bubble-cole" class="speech-bubble-box"></div></div>
+      <div class="speech-bubble-wrapper"><div id="bubble-ellie" class="speech-bubble-box"></div></div>
+    </div>
+
+    <div id="ellie-card" class="character-side-card">
+      <div id="shimeji-ellie" class="shimeji-avatar" title="엘리">
+        <img id="img-ellie" src="https://lh3.googleusercontent.com/rd-d/ALs6j_HOhgpl1wV-cvpVlOZmXJJuEEofh_tF8S0G33N3s3AXg8XR6FpkM0LGYPqSB3O38ZiB3J9WS4miSZ8vGtsnnvnmWsyK65PqjBdYpoV5UB8OYrbVtcgekzl_uLbpXzoNoM7jS5AMfCWqVM67Ua97Fg2ZqXlIH_HfBfSPOHxyqSAcHcSPQSiq2j6GGm_OlrX7zhUpjGb0opRODCUtLrCp2cROPakIEhZi17pPOq0QBZGm69stlUX5shDjnEO0p-ShwNHObKJgQnFkRlefh67I59jMQHHrtjSzjCoAVzGyDWAWAW7tdqcslMEF7xQIt8A71n6vplY9cvB7Ez8gaH6PT6MYvhF9loDBnYREL2ix5UN3hv6bdoX_92scYwbNxBcEr-M3-dU6YNXnfDKBWmZHOXg5FbvoQDwhdzgG5XJJQoHjNHoHKuCx7S0T5jLskVNbD7vBefuhTkwsId5VCKXwEYEz7yCcOIVyoT7kEC8YgtXnc_zDGy3l4JwA7h_zXZuUORrgXq-7EhtBBkoMGr9oM1hFftpo6v5ohQaTkYPEGH5fKB5fx7ifqV3mLCHp2etsakhP2JBSDbup0WT7sOzu6XwbpfSQBdyDG2RaGhQq-MIax79ab232d_nfumYffnCddo0PWyAn8yWIoV4H-7k0iqgIuCqLa_s6asNj-Dk2Kik63qj61BbJY7v9wwk2_0C6yHZLAk5h9tOQUKJTl99yTTsJyjd6sAfNq-DDiNObz0xU2LLihtIrbEXgY5j3zn2Rkt9BXO89JQ6TgTJzqskXnhKoLnZeP-geRZwetNo5vTQ1th_cX1Rx1wFykfN_DjkOTe7KxEApwj_pwxRA_qC0SztBDe8yA20ed3e02nAZfz5_m4X7U7XINexvcYUdFs-Y0pTiKjNVxe9e9FsHeNtOqTRLR4KvSz8HfC64w4o48zfoLWX9fdfo1oBNoRehkrmoW3S4iZmK3Q3de8ktdI5HhvTW8tInnbO_hfzw660rva9AdzpcA-DM8GgvU2RWFpFoFAP6U3zvedgflLbJ8KY2xpu7Au0fYEmfL_086adGFFnjFHjueHvDV7db3Qn_tts13ebNPqRH2x_kyQyrGHZu_V2zhyhQGSixUHiHqIIJGsAaXmg5zv07vbTQA8RPeiHLHLY2uUB-bJ2rKQ=w1084-h909" alt="엘리">
+      </div>
+      <div class="card-btn-group">
+        <button id="list-btn-ellie" class="action-icon-btn">≡</button>
+        <button id="btn-ellie" class="action-icon-btn" title="대사 추가">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 아이템 영역 -->
+  <div class="item-container" id="item-container">
+    <div class="item-btn" data-item-id="dagger" title="단검"><img src="https://lh3.googleusercontent.com/rd-d/ALs6j_EgcmNBfK9g_OM1PngoybkJKcwreHX59nX1sO0HuPhuR8aGY79FztA2ype2UwPHkgA8ZfPfwDsqgPDPdEhacIKHIj8UIUvXRrChr8lwXdASkAHi_5CBTeeh3S8_9lkMDFUcFpcCj-90LNO3PfzDJHL3pcNvxtkTI8Ggi5rJaAnGlyyK9LUcnbe61ud-TbMNQ8v6eLyvklqwC8zoNlrJylAjie9ELcay654tynXKpu4BW7G67JQhQyd-u4-v6uEMvvrLOWL2EDB1p6-z90oY20HM0489dykPQi3eiwSWimmkF5P_1CrlYohSa_RKYC5hMtoobiJs6W4sZj6Z9j_DliszGdtqflHrxcSqxPC0rUPmhe9pvIwqXgYP8MlZvihChg7GXD8uAnNT6TfWoGSKg_w342xomLy3zwJGNP_T2zBh73XNL4fC4Ip7gKszTKjoYOIvCeg0steKdJ4DlKRKIyB75LN3yFObwFaKiGzbYjKsUeYdDYQzogku-QaR7ewvLvJNGUt_ocVCFQpFZjK0jmSrdkMTa5fbo4FThQR-AXbCdJ67i30WEa5dX2p7Igc-U8TqbTLwsXbf3ScYIY15ffYZRfhQ9CkuUdK-SmrSV9dC4Hn5nQWsTjS2m2CJtrwPzGNU19ZXkpEzgOWwe4KBDIKGgwHbCBoIYR01eB6S-hmrAUc3gEi9YaItUcfWw39aocx6_SIk6vXNvPVhVNZiugBVbnvA9Ll4pX69kOJQJvmBiRL6iMbC8J9PLcgyLgXsR56rNcbgLC9nmQ9cLPfM10PRfDmgEYe_0zA4dKFbDxUfwHM4WmZvkKR8RcV-zM5P00Qlx6VldMU7Muh11MWExBPO-3YBP4IvsW_WyzmVcNcZkc_TcSmseLmkWfJ60U3MOYtMS4-Xp6SKwioYosf0jFbYtZxuuFPM1FUhZxiu-QCD9iTO70YUgKJ_qGGIhH7HA3EafPYqyMsY1NAcvdjkvfxzNlNgNJUHfazmv4nrx84N2UuFVhuE1MZxAkBwpfoCLLpHvgraFaSbgzM2lklYLvE3BTNkRqZwZA5Ix08EvuBv4H_YYgJIQ8P4c7vlBukCkD1Zu6AdrAkSrkNgmQ4xXctf_T4u1qUW6RmqdlWz743N-VdRl2xaLlo0czsgbkZ4YlIWdNDHvMwaKg=w1376-h825" alt="단검"></div>
+    <div class="item-btn" data-item-id="cocoa" title="코코아"><img src="https://lh3.googleusercontent.com/rd-d/ALs6j_HHhKW9hvgT_tSV1Coq9ep3-2mdEiy8ZDQjWqfgoiaTxfXfMosz99cgeoL9dTkghMPo4FBXt_NF2t_ljBQkrgjQbZrWyLrMyTfRUKuVYK1r7RbpciSl_S35XJ9j64cB04XASMnGdjgSQ2veNO64RnthKY_buM9HapCp2M7oysR2Z9p3N13LsalRzJ9vKGHFUUP7oXBFgCeGz-GYrdsGDq2v2pNAnmm4KKWH4rs9j_k7pqHlMnk4t3DV0-tEL7V8SAuAAc2ZaP1-TsgYabGU9RjiWGCtHdvrrH-6EBl8hShfaGcA9PFh9-LY4v0vSwnT7zrsfyhVWUZC8MJGg_ElenMJYlFTlYKS0RJ2vz1BnMYWe67VGh-wwjrIp8rFvm3CY5Qj9BR-11UlQQsF4A3PPAKyqtfZiN04jZUO6XHps-Ku9kjUgapMCDUAwoFcO1qPZk2dYRT5acIJ_nZJ528LB1zqxr6acJBLYCKHKgQDx_o7SwobSmGWpt_2w68uB8IEtV4gbYwUxHKt_llhjw4hUl75Qsc0vk_nEjchBCjVKVTCr03MTYO4RbXwqffqvHSoQhDRaf-nvk-sgfnpRmR9Lyr_VrILLFDy9wMLFivDLfJcL61deXNPUdLhK8RxX-gZuZEYiYwXCB9U4TSuKXq319gYJFEJWR0_sQn1ujGuAuz6f2TcLKS5t63hPgd8RiMgOJ_iFz5PNElHdbSF0v1CkLxJWWUKI1YBnXDtpVc10aFxSsGyQ0Aqd-JrIdHFZYvk3n3wneYCflef3nGyRPH6iJQM9Ous8S-i43it7g1SWZOygUD2HsDH_1YWUzybtnEayc1uaC2SwqwhBIhSIOx4R1vtD3W86l3RZnhV0b04ztuNlCpc4y_au6a_Hs8uW0I3fI7yIGAZwmSED-5jdcokDqURrYIdg1proq2ygC2LeIsc-EW470C0ncyYY3KgnEVQW1cASuNzZ5txcv6abgtb1tM2i4xiGGY90ooQDCFNaTl1jZJE4W8jYZMXw6e8NSHNT5fi3QLt1iKlbb_Y-oOy_rl8qjx-3Hoi_xvVcWsIMnKW-_lQy8UxMO0lSEzphfkQ7c2-DkFXldOTFn8VD2vzvBBhG0WcCS-jSH1DjnVoFgMks4VjajQ3hexzR5nL0alNi5CUiKLhjJO45A=w1125-h825" alt="코코아"></div>
+    <div class="item-btn" data-item-id="heart" title="심장"><img src="https://lh3.googleusercontent.com/rd-d/ALs6j_GBOOA8WNOzVtAMVdeYLhgFFDaaTQzFLVUN_Ny2MCzpCfFtjnyUK0n2KT00I4MaGij2NIBs2eC_OJbQ66TJeYe9cXtzie_NKoTzMlCqadFkJi757fHZvc4nMAS6gJVCjXeb8h9R6VxdG2cOTSP9ux9-GxXiQhmhTY3WyiU69Nlwv8hDQUqBEfW503UlNN9cCVWHrVvUKobD3UGMaJ9CAEdQufGCUdHSmF_XDnIKE1EkmPBmOVFXraL9NMjzvc14etCIiOb8s7X_ghng5oSbtdwetbv4-3cZWeh2Go95TQXFHzYUaXqVttnABC8kIarrbt5cQkqKFnmWZb5fKnoe3o3RjVPKSkuvTkAngzV7pn6wg1rrbXjxjrxrgY7u4RPoFqFgz2FzNuj23L4kR8mkjWnav9zbmVS7zcvUkV0EhNspyOMumefMIHRofraqScWYqU4O33ZJf8ZiFJxndnOM1kiYhcdN2Bj88PyvJ6Uxsvg7Rolf-L0BFJCl7Sce9zPNaeQFaMsCGcj3DqrO_jp1T1_Nh_KI3ef-GJtB71yZdljVT4IopAjsyyGn_x6Zf9q9h5ERULPdBVYewYD2sDt3_2qtSIb6JuLyJKoOEKgsEqHaXeaDYtF7aIXRJ2xX0tH8eqjH9vgHJDHD9v9h0DIa9jX7sdE_GW-bgel7WrupoujYoqw4Um32cMCK4gUJNoBya7u5ruDw7b1oJ1-LOJnvVZkql2hAD0HMYr7xYTTi-ujGLUR5xtkAQClKAD8kjMJmjGJ5p1_eRqNSvKGaHFLV_zd1D_QWs5iHzGQAexjYEElI6S96XvOfIWBN2VMnkkRGpVDY2XeAJAYwKrFbeU2zS9h30rLjMD8rFecd1PNESgDXt5q_xFv8RktQIvJuLCUe27kNjqbCSZIn_WexKjCB56T3CEnNHQZuvoMwKEKaQBchm1aQiPC5cEacGmbdINksljCCCoFkgMxl57Sku0dFFC4oB-k3xbWT_bXtWjOjQpFrMY8hkN8mQRL9Jytt8slWCOh8vCXQFhyoig7yJFS7YIPOrBqkQVHpVKE9iKX3LD5kjYQkfEyNVefzOAwdMkhyidxVoCvO65gSCxWAk5SE5YgtoeXStL_MChfZhhJnO-8d1GE7aPraCMJT2ZljAl41sWSHi_jlY7dOAg=w1125-h825" alt="심장"></div>
+    <div class="item-btn" data-item-id="gold" title="금화"><img src="https://lh3.googleusercontent.com/rd-d/ALs6j_GZ9_KZsgHNt4DK7emzA7pSZbGZcrD9rTUFEYfreux1c0JFUanU7dBqPgaXGLApHtN90KCSMmdu2kuK5dem6aLNHiVkLH1W_xAq9beFj5UDm41zk11EaKfc1X-dBlu0UGycAT9PvPDssdPHVIVy8eXAoBSePwVEZ6VreFwWH8ZUQPrafRAV5skAbOxOv5nmM9G0o-DtG4zf1A9OitCP5r6N2eIkZwN07kadvNSeDZ4oi8LnebincR3hJs8ZxDpKMmQhpVsUHZYIQ7dqD2Cg1YJn1as9C9XYLFeoivoUl0TFGSuGCvjFpt73d1rkNNhal563_DThlOjI5-gc3F3kDcSju4GhjTjwbzDOFsFvMtIUaaVEoIwnEDHtZlYUSLlfHMMvAhfFHLrJPO-uEe595XM4cgn24tZVAbqz_SdNSJLHJQ0QQ91C4t0PJFA7O21-Bz8suTK7K7TmzxPI-Ql0G64PAkF8lSiDBpM1MGPmUTrTbYshiYBpU8L1suhkolDLi8RXQBiz3GOzM77M8Yz6IUIZWnMsHp1ab1xVzbF6t8OvAORuVkyHQVKOTlPNB0hBWIFtw4ODqjgk8mWS5LIiJ1xr40UuJCfLYlWBMUgC7daPAhfwtUn_GqpqQFJPsgp6zmSlAun8UgcXgVxaBID9KK5p4P922RIkA8k0zXS3CHMdAiKVGFR0Lxf6vjJTH4n4_W-D7-d8M9pxd2MxINBJ-XOTA0k3jzNr0ZcnNqvHnkeIwd3FnOpKRnXaRlArDYOZMybrkNrmPdeUfNqSNX-eEsSVAMXgXjc9Qwc1G-PhCfSrqXbi3NiXYhr_juMwXcP7GzLZDV-6O4BHCqjszm8vpaFcx3Xoxr5EiSdWqq-vHZYbNEjXvvM-fu7VcarBtGcZTzK5HJw6fiCunK2GdHIts0BT3SX92NrzCLjzcEbNGWfdYTh6pkqcC9wtbOvi6XG3ikVmWWrQvgKU4J2X5HVb644B5HvgWDvtbpvstrtEkf-LZHC-3V2IfPep_h2Bg4HnEY7AV1po7cFwtGHMRpT3zGY3cLYcVfjfk9qAPfB5ajjoeA-53MUb7j6zrQtI19Bh9NqIrSRppueWea19awVahO5xOeTMm9fFqMHfiOY200mmZqmFklDZce-rErdjHNKZjtVMtpRJt81wjA=w1125-h825" alt="금화"></div>
+  </div>
+
+  <!-- 모달 창들 (대사 목록, 추가, 수정, 표정관리 등) -->
+  <div id="quote-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span id="modal-title">≡</span>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="expression-manage-btn" class="quote-tag-btn default-tag">표정</button>
+          <button id="modal-close-btn" class="modal-close-btn">✕</button>
+        </div>
+      </div>
+      <ul id="modal-quote-list" class="modal-body"></ul>
+    </div>
+  </div>
+
+  <div id="quote-add-modal" class="modal-overlay">
+    <div class="modal-card" style="max-height: 230px;">
+      <div class="modal-header">
+        <span id="quote-add-modal-title">대사 추가</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <label class="checkbox-group"><input type="checkbox" id="quote-add-item-checkbox"> 아이템</label>
+          <button id="quote-add-modal-close-btn" class="modal-close-btn">✕</button>
+        </div>
+      </div>
+      <div class="modal-input-box">
+        <input type="text" id="quote-add-input" placeholder="추가할 대사를 입력하세요">
+        <button id="quote-add-submit-btn">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="quote-edit-modal" class="modal-overlay">
+    <div class="modal-card" style="max-height: 200px;">
+      <div class="modal-header">
+        <span>대사 수정</span>
+        <button id="quote-edit-modal-close-btn" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-input-box">
+        <input type="text" id="quote-edit-input" placeholder="수정할 대사 입력">
+        <button id="quote-edit-submit-btn">수정</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="expression-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span>표정 목록 관리</span>
+        <button id="expression-modal-close-btn" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-input-box" style="padding-bottom: 0;">
+        <input type="text" id="exp-name-input" placeholder="표정 이름 (예: 웃음)">
+        <input type="text" id="exp-url-input" placeholder="이미지 URL 링크">
+        <button id="add-expression-btn" style="width:100%;">등록</button>
+      </div>
+      <ul id="expression-list" class="modal-body"></ul>
+    </div>
+  </div>
+
+  <div id="expression-select-modal" class="modal-overlay">
+    <div class="modal-card" style="max-height: 250px;">
+      <div class="modal-header"><span>표정 선택</span><button id="exp-select-close-btn" class="modal-close-btn">✕</button></div>
+      <ul id="expression-select-list" class="modal-body"></ul>
+    </div>
+  </div>
+
+  <div id="item-select-modal" class="modal-overlay">
+    <div class="modal-card" style="max-height: 250px;">
+      <div class="modal-header"><span>아이템 선택</span><button id="item-select-close-btn" class="modal-close-btn">✕</button></div>
+      <ul id="item-select-list" class="modal-body"></ul>
+    </div>
+  </div>
+
+  <div id="item-detail-modal" class="modal-overlay">
+    <div class="modal-card" style="max-height: 320px;">
+      <div class="modal-header"><span id="item-detail-name">아이템</span><button id="item-detail-close-btn" class="modal-close-btn">✕</button></div>
+      <div class="item-modal-content">
+        <img id="item-detail-img" class="item-modal-img" src="" alt="아이템">
+        <div id="item-detail-name-title" class="item-modal-name"></div>
+        <div id="item-detail-desc" class="item-modal-desc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Supabase 설정 (본인의 URL과 Anon Key 입력)
+    const SUPABASE_URL = 'https://wqtitwjloabqchtvdzuv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_kp8d3RAlM8bwQgf-CUc6Pg_ZZX-q-6D';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const itemDataDict = {
+      dagger: { name: "단검", desc: "화려한 장식이 되어있는 예리한 단검이다. 피냄새가 배어있는 것 같다.", img: "https://lh3.googleusercontent.com/rd-d/ALs6j_EgcmNBfK9g_OM1PngoybkJKcwreHX59nX1sO0HuPhuR8aGY79FztA2ype2UwPHkgA8ZfPfwDsqgPDPdEhacIKHIj8UIUvXRrChr8lwXdASkAHi_5CBTeeh3S8_9lkMDFUcFpcCj-90LNO3PfzDJHL3pcNvxtkTI8Ggi5rJaAnGlyyK9LUcnbe61ud-TbMNQ8v6eLyvklqwC8zoNlrJylAjie9ELcay654tynXKpu4BW7G67JQhQyd-u4-v6uEMvvrLOWL2EDB1p6-z90oY20HM0489dykPQi3eiwSWimmkF5P_1CrlYohSa_RKYC5hMtoobiJs6W4sZj6Z9j_DliszGdtqflHrxcSqxPC0rUPmhe9pvIwqXgYP8MlZvihChg7GXD8uAnNT6TfWoGSKg_w342xomLy3zwJGNP_T2zBh73XNL4fC4Ip7gKszTKjoYOIvCeg0steKdJ4DlKRKIyB75LN3yFObwFaKiGzbYjKsUeYdDYQzogku-QaR7ewvLvJNGUt_ocVCFQpFZjK0jmSrdkMTa5fbo4FThQR-AXbCdJ67i30WEa5dX2p7Igc-U8TqbTLwsXbf3ScYIY15ffYZRfhQ9CkuUdK-SmrSV9dC4Hn5nQWsTjS2m2CJtrwPzGNU19ZXkpEzgOWwe4KBDIKGgwHbCBoIYR01eB6S-hmrAUc3gEi9YaItUcfWw39aocx6_SIk6vXNvPVhVNZiugBVbnvA9Ll4pX69kOJQJvmBiRL6iMbC8J9PLcgyLgXsR56rNcbgLC9nmQ9cLPfM10PRfDmgEYe_0zA4dKFbDxUfwHM4WmZvkKR8RcV-zM5P00Qlx6VldMU7Muh11MWExBPO-3YBP4IvsW_WyzmVcNcZkc_TcSmseLmkWfJ60U3MOYtMS4-Xp6SKwioYosf0jFbYtZxuuFPM1FUhZxiu-QCD9iTO70YUgKJ_qGGIhH7HA3EafPYqyMsY1NAcvdjkvfxzNlNgNJUHfazmv4nrx84N2UuFVhuE1MZxAkBwpfoCLLpHvgraFaSbgzM2lklYLvE3BTNkRqZwZA5Ix08EvuBv4H_YYgJIQ8P4c7vlBukCkD1Zu6AdrAkSrkNgmQ4xXctf_T4u1qUW6RmqdlWz743N-VdRl2xaLlo0czsgbkZ4YlIWdNDHvMwaKg=w1376-h825" },
+      cocoa: { name: "코코아", desc: "마시멜로가 동동 띄워진 달콤하고 진한 코코아다.", img: "https://lh3.googleusercontent.com/rd-d/ALs6j_HHhKW9hvgT_tSV1Coq9ep3-2mdEiy8ZDQjWqfgoiaTxfXfMosz99cgeoL9dTkghMPo4FBXt_NF2t_ljBQkrgjQbZrWyLrMyTfRUKuVYK1r7RbpciSl_S35XJ9j64cB04XASMnGdjgSQ2veNO64RnthKY_buM9HapCp2M7oysR2Z9p3N13LsalRzJ9vKGHFUUP7oXBFgCeGz-GYrdsGDq2v2pNAnmm4KKWH4rs9j_k7pqHlMnk4t3DV0-tEL7V8SAuAAc2ZaP1-TsgYabGU9RjiWGCtHdvrrH-6EBl8hShfaGcA9PFh9-LY4v0vSwnT7zrsfyhVWUZC8MJGg_ElenMJYlFTlYKS0RJ2vz1BnMYWe67VGh-wwjrIp8rFvm3CY5Qj9BR-11UlQQsF4A3PPAKyqtfZiN04jZUO6XHps-Ku9kjUgapMCDUAwoFcO1qPZk2dYRT5acIJ_nZJ528LB1zqxr6acJBLYCKHKgQDx_o7SwobSmGWpt_2w68uB8IEtV4gbYwUxHKt_llhjw4hUl75Qsc0vk_nEjchBCjVKVTCr03MTYO4RbXwqffqvHSoQhDRaf-nvk-sgfnpRmR9Lyr_VrILLFDy9wMLFivDLfJcL61deXNPUdLhK8RxX-gZuZEYiYwXCB9U4TSuKXq319gYJFEJWR0_sQn1ujGuAuz6f2TcLKS5t63hPgd8RiMgOJ_iFz5PNElHdbSF0v1CkLxJWWUKI1YBnXDtpVc10aFxSsGyQ0Aqd-JrIdHFZYvk3n3wneYCflef3nGyRPH6iJQM9Ous8S-i43it7g1SWZOygUD2HsDH_1YWUzybtnEayc1uaC2SwqwhBIhSIOx4R1vtD3W86l3RZnhV0b04ztuNlCpc4y_au6a_Hs8uW0I3fI7yIGAZwmSED-5jdcokDqURrYIdg1proq2ygC2LeIsc-EW470C0ncyYY3KgnEVQW1cASuNzZ5txcv6abgtb1tM2i4xiGGY90ooQDCFNaTl1jZJE4W8jYZMXw6e8NSHNT5fi3QLt1iKlbb_Y-oOy_rl8qjx-3Hoi_xvVcWsIMnKW-_lQy8UxMO0lSEzphfkQ7c2-DkFXldOTFn8VD2vzvBBhG0WcCS-jSH1DjnVoFgMks4VjajQ3hexzR5nL0alNi5CUiKLhjJO45A=w1125-h825" },
+      heart: { name: "심장", desc: "뜯겨졌음에도 여전히 콩닥콩닥 뛰고 있는 심장이다.", img: "https://lh3.googleusercontent.com/rd-d/ALs6j_GBOOA8WNOzVtAMVdeYLhgFFDaaTQzFLVUN_Ny2MCzpCfFtjnyUK0n2KT00I4MaGij2NIBs2eC_OJbQ66TJeYe9cXtzie_NKoTzMlCqadFkJi757fHZvc4nMAS6gJVCjXeb8h9R6VxdG2cOTSP9ux9-GxXiQhmhTY3WyiU69Nlwv8hDQUqBEfW503UlNN9cCVWHrVvUKobD3UGMaJ9CAEdQufGCUdHSmF_XDnIKE1EkmPBmOVFXraL9NMjzvc14etCIiOb8s7X_ghng5oSbtdwetbv4-3cZWeh2Go95TQXFHzYUaXqVttnABC8kIarrbt5cQkqKFnmWZb5fKnoe3o3RjVPKSkuvTkAngzV7pn6wg1rrbXjxjrxrgY7u4RPoFqFgz2FzNuj23L4kR8mkjWnav9zbmVS7zcvUkV0EhNspyOMumefMIHRofraqScWYqU4O33ZJf8ZiFJxndnOM1kiYhcdN2Bj88PyvJ6Uxsvg7Rolf-L0BFJCl7Sce9zPNaeQFaMsCGcj3DqrO_jp1T1_Nh_KI3ef-GJtB71yZdljVT4IopAjsyyGn_x6Zf9q9h5ERULPdBVYewYD2sDt3_2qtSIb6JuLyJKoOEKgsEqHaXeaDYtF7aIXRJ2xX0tH8eqjH9vgHJDHD9v9h0DIa9jX7sdE_GW-bgel7WrupoujYoqw4Um32cMCK4gUJNoBya7u5ruDw7b1oJ1-LOJnvVZkql2hAD0HMYr7xYTTi-ujGLUR5xtkAQClKAD8kjMJmjGJ5p1_eRqNSvKGaHFLV_zd1D_QWs5iHzGQAexjYEElI6S96XvOfIWBN2VMnkkRGpVDY2XeAJAYwKrFbeU2zS9h30rLjMD8rFecd1PNESgDXt5q_xFv8RktQIvJuLCUe27kNjqbCSZIn_WexKjCB56T3CEnNHQZuvoMwKEKaQBchm1aQiPC5cEacGmbdINksljCCCoFkgMxl57Sku0dFFC4oB-k3xbWT_bXtWjOjQpFrMY8hkN8mQRL9Jytt8slWCOh8vCXQFhyoig7yJFS7YIPOrBqkQVHpVKE9iKX3LD5kjYQkfEyNVefzOAwdMkhyidxVoCvO65gSCxWAk5SE5YgtoeXStL_MChfZhhJnO-8d1GE7aPraCMJT2ZljAl41sWSHi_jlY7dOAg=w1125-h825" },
+      gold: { name: "금화", desc: "반짝이는 금화들이다. 사치품을 살 때 주로 쓰인다.", img: "https://lh3.googleusercontent.com/rd-d/ALs6j_GZ9_KZsgHNt4DK7emzA7pSZbGZcrD9rTUFEYfreux1c0JFUanU7dBqPgaXGLApHtN90KCSMmdu2kuK5dem6aLNHiVkLH1W_xAq9beFj5UDm41zk11EaKfc1X-dBlu0UGycAT9PvPDssdPHVIVy8eXAoBSePwVEZ6VreFwWH8ZUQPrafRAV5skAbOxOv5nmM9G0o-DtG4zf1A9OitCP5r6N2eIkZwN07kadvNSeDZ4oi8LnebincR3hJs8ZxDpKMmQhpVsUHZYIQ7dqD2Cg1YJn1as9C9XYLFeoivoUl0TFGSuGCvjFpt73d1rkNNhal563_DThlOjI5-gc3F3kDcSju4GhjTjwbzDOFsFvMtIUaaVEoIwnEDHtZlYUSLlfHMMvAhfFHLrJPO-uEe595XM4cgn24tZVAbqz_SdNSJLHJQ0QQ91C4t0PJFA7O21-Bz8suTK7K7TmzxPI-Ql0G64PAkF8lSiDBpM1MGPmUTrTbYshiYBpU8L1suhkolDLi8RXQBiz3GOzM77M8Yz6IUIZWnMsHp1ab1xVzbF6t8OvAORuVkyHQVKOTlPNB0hBWIFtw4ODqjgk8mWS5LIiJ1xr40UuJCfLYlWBMUgC7daPAhfwtUn_GqpqQFJPsgp6zmSlAun8UgcXgVxaBID9KK5p4P922RIkA8k0zXS3CHMdAiKVGFR0Lxf6vjJTH4n4_W-D7-d8M9pxd2MxINBJ-XOTA0k3jzNr0ZcnNqvHnkeIwd3FnOpKRnXaRlArDYOZMybrkNrmPdeUfNqSNX-eEsSVAMXgXjc9Qwc1G-PhCfSrqXbi3NiXYhr_juMwXcP7GzLZDV-6O4BHCqjszm8vpaFcx3Xoxr5EiSdWqq-vHZYbNEjXvvM-fu7VcarBtGcZTzK5HJw6fiCunK2GdHIts0BT3SX92NrzCLjzcEbNGWfdYTh6pkqcC9wtbOvi6XG3ikVmWWrQvgKU4J2X5HVb644B5HvgWDvtbpvstrtEkf-LZHC-3V2IfPep_h2Bg4HnEY7AV1po7cFwtGHMRpT3zGY3cLYcVfjfk9qAPfB5ajjoeA-53MUb7j6zrQtI19Bh9NqIrSRppueWea19awVahO5xOeTMm9fFqMHfiOY200mmZqmFklDZce-rErdjHNKZjtVMtpRJt81wjA=w1125-h825" }
+    };
+
+    let sharedQuotes = {};
+    let characterExpressions = {};
+    let currentActiveShimeji = null;
+    let editingQuoteId = null;
+    let editingExpId = null;
+    let tempQuoteTextToAdd = "";
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadDataFromSupabase();
+      initModal();
+      initCharacters();
+      initItems();
+      document.getElementById('loading-overlay').classList.add('is-hidden');
+    });
+
+    // Supabase 데이터 로드
+    async function loadDataFromSupabase() {
+      try {
+        const { data: quotesData } = await supabaseClient.from('quotes').select('*');
+        const { data: expsData } = await supabaseClient.from('expressions').select('*');
+
+        sharedQuotes = {};
+        characterExpressions = {};
+
+        if (quotesData) {
+          quotesData.forEach(q => {
+            if (!sharedQuotes[q.character_id]) sharedQuotes[q.character_id] = [];
+            sharedQuotes[q.character_id].push({
+              id: q.id,
+              text: q.text,
+              image: q.image || '',
+              imageTitle: q.image_title || '',
+              itemName: q.item_name || ''
+            });
+          });
+        }
+
+        if (expsData) {
+          expsData.forEach(e => {
+            if (!characterExpressions[e.character_id]) characterExpressions[e.character_id] = [];
+            characterExpressions[e.character_id].push({
+              id: e.id,
+              name: e.name,
+              url: e.url
+            });
+          });
+        }
+      } catch (err) {
+        console.error('데이터 로드 실패:', err);
+        alert('데이터를 불러오는 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 캐릭터 클래스 정의
+    class ShimejiCharacter {
+      constructor(config) {
+        this.id = config.id;
+        this.name = config.name;
+        this.element = document.getElementById(config.id);
+        this.imgElement = document.getElementById(config.imgId);
+        this.defaultImageSrc = this.imgElement ? this.imgElement.src : "";
+        this.bubbleElement = document.getElementById(config.bubbleId);
+        this.otherBubbleElement = document.getElementById(config.otherBubbleId);
+        this.init();
+      }
+
+      init() {
+        if (this.element) {
+          this.element.addEventListener('click', () => this.speakRandomQuote());
+        }
+        document.getElementById(this.id === 'shimeji-cole' ? 'btn-cole' : 'btn-ellie').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openQuoteAddModal(this);
+        });
+        document.getElementById(this.id === 'shimeji-cole' ? 'list-btn-cole' : 'list-btn-ellie').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openQuoteModal(this);
+        });
+      }
+
+      getQuotes() { return Array.isArray(sharedQuotes[this.id]) ? sharedQuotes[this.id] : []; }
+
+      speakRandomQuote() {
+        const quotes = this.getQuotes();
+        if (quotes.length === 0) { this.showBubble("등록된 대사가 없습니다."); return; }
+        const q = quotes[Math.floor(Math.random() * quotes.length)];
+        this.speakQuote(q);
+      }
+
+      speakQuote(q) {
+        if (!q) return;
+        this.showBubble(q.text);
+        this.imgElement.src = q.image || this.defaultImageSrc;
+      }
+
+      showBubble(text) {
+        if (this.otherBubbleElement) this.otherBubbleElement.style.display = 'none';
+        if (this.bubbleElement) {
+          this.bubbleElement.innerText = text;
+          this.bubbleElement.style.display = 'block';
+          setTimeout(() => {
+            this.bubbleElement.style.display = 'none';
+            this.imgElement.src = this.defaultImageSrc;
+          }, 4000);
+        }
+      }
+
+      reactToItem(itemName) {
+        const quotes = this.getQuotes().filter(q => q.itemName === itemName);
+        if (quotes.length > 0) {
+          this.speakQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+        } else {
+          this.showBubble(`${itemName}? 이게 뭐지?`);
+        }
+      }
+    }
+
+    let coleChar, ellieChar;
+    function initCharacters() {
+      coleChar = new ShimejiCharacter({ id: 'shimeji-cole', name: '콜', imgId: 'img-cole', bubbleId: 'bubble-cole', otherBubbleId: 'bubble-ellie' });
+      ellieChar = new ShimejiCharacter({ id: 'shimeji-ellie', name: '엘리', imgId: 'img-ellie', bubbleId: 'bubble-ellie', otherBubbleId: 'bubble-cole' });
+    }
+
+    function initItems() {
+      document.querySelectorAll('.item-btn').forEach(btn => {
+        const itemId = btn.getAttribute('data-item-id');
+        const info = itemDataDict[itemId];
+        btn.addEventListener('click', () => {
+          document.getElementById('item-detail-name').innerText = info.name + " 상세 정보";
+          document.getElementById('item-detail-name-title').innerText = info.name;
+          document.getElementById('item-detail-img').src = info.img;
+          document.getElementById('item-detail-desc').innerText = info.desc;
+          document.getElementById('item-detail-modal').style.display = 'flex';
+        });
+      });
+    }
+
+    // 모달 관리 및 CRUD 함수들
+    function initModal() {
+      document.getElementById('modal-close-btn').addEventListener('click', () => document.getElementById('quote-modal').style.display = 'none');
+      document.getElementById('quote-add-modal-close-btn').addEventListener('click', () => document.getElementById('quote-add-modal').style.display = 'none');
+      document.getElementById('quote-edit-modal-close-btn').addEventListener('click', () => document.getElementById('quote-edit-modal').style.display = 'none');
+      document.getElementById('expression-modal-close-btn').addEventListener('click', () => document.getElementById('expression-modal').style.display = 'none');
+      document.getElementById('exp-select-close-btn').addEventListener('click', () => document.getElementById('expression-select-modal').style.display = 'none');
+      document.getElementById('item-select-close-btn').addEventListener('click', () => document.getElementById('item-select-modal').style.display = 'none');
+      document.getElementById('item-detail-close-btn').addEventListener('click', () => document.getElementById('item-detail-modal').style.display = 'none');
+
+      document.getElementById('expression-manage-btn').addEventListener('click', openExpressionModal);
+      document.getElementById('quote-add-submit-btn').addEventListener('click', submitAddQuote);
+      document.getElementById('quote-edit-submit-btn').addEventListener('click', submitEditQuote);
+      document.getElementById('add-expression-btn').addEventListener('click', submitAddExpression);
+    }
+
+    function openQuoteModal(char) {
+      currentActiveShimeji = char;
+      document.getElementById('modal-title').innerText = `${char.name} 대사 목록`;
+      renderModalQuoteList();
+      document.getElementById('quote-modal').style.display = 'flex';
+    }
+
+    function renderModalQuoteList() {
+      const list = document.getElementById('modal-quote-list');
+      list.innerHTML = '';
+      const quotes = currentActiveShimeji.getQuotes();
+
+      if (quotes.length === 0) {
+        list.innerHTML = '<li style="text-align:center; color:#aaa; padding:15px;">등록된 대사가 없습니다.</li>';
+        return;
+      }
+
+      quotes.forEach((q) => {
+        const li = document.createElement('li');
+        li.className = 'quote-row';
+        const tagThemeClass = currentActiveShimeji.id === 'shimeji-cole' ? 'cole-tag' : 'ellie-tag';
+        li.innerHTML = `
+          <span class="quote-text">${q.text}</span>
+          <div class="quote-actions">
+            <button class="quote-tag-btn ${q.itemName ? 'active-tag ' + tagThemeClass : 'default-tag'}">${q.itemName || '기본'}</button>
+            <button class="quote-tag-btn ${q.imageTitle ? 'active-tag ' + tagThemeClass : 'default-tag'}" onclick="openExpressionSelect('${q.id}')">${q.imageTitle || '기본'}</button>
+            <button class="quote-action-btn" onclick="openQuoteEdit('${q.id}', '${q.text}')">수정</button>
+            <button class="delete-btn" onclick="deleteQuote('${q.id}')">✕</button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function openQuoteAddModal(char) {
+      currentActiveShimeji = char;
+      const isEllie = char.id === 'shimeji-ellie';
+      
+      const inputEl = document.getElementById('quote-add-input');
+      const submitBtn = document.getElementById('quote-add-submit-btn');
+      
+      if (isEllie) {
+        inputEl.classList.add('ellie-theme');
+        submitBtn.classList.add('ellie-theme-btn');
+      } else {
+        inputEl.classList.remove('ellie-theme');
+        submitBtn.classList.remove('ellie-theme-btn');
+      }
+
+      inputEl.value = '';
+      document.getElementById('quote-add-item-checkbox').checked = false;
+      document.getElementById('quote-add-modal').style.display = 'flex';
+    }
+
+    async function submitAddQuote() {
+      const text = document.getElementById('quote-add-input').value.trim();
+      const isItem = document.getElementById('quote-add-item-checkbox').checked;
+      if (!text) return;
+
+      let itemName = "";
+      if (isItem) {
+        itemName = "단검"; 
+      }
+
+      const { data, error } = await supabaseClient.from('quotes').insert([{
+        character_id: currentActiveShimeji.id,
+        text: text,
+        item_name: itemName
+      }]).select();
+
+      if (!error && data) {
+        if (!sharedQuotes[currentActiveShimeji.id]) sharedQuotes[currentActiveShimeji.id] = [];
+        sharedQuotes[currentActiveShimeji.id].push({
+          id: data[0].id,
+          text: text,
+          image: '',
+          imageTitle: '',
+          itemName: itemName
+        });
+        document.getElementById('quote-add-modal').style.display = 'none';
+        alert('대사가 추가되었습니다!');
+      } else {
+        alert('추가 실패');
+      }
+    }
+
+    function openQuoteEdit(id, text) {
+      editingQuoteId = id;
+      document.getElementById('quote-edit-input').value = text;
+      document.getElementById('quote-edit-modal').style.display = 'flex';
+    }
+
+    async function submitEditQuote() {
+      const newText = document.getElementById('quote-edit-input').value.trim();
+      if (!newText || !editingQuoteId) return;
+
+      const { error } = await supabaseClient.from('quotes').update({ text: newText }).eq('id', editingQuoteId);
+      if (!error) {
+        const quotes = currentActiveShimeji.getQuotes();
+        const q = quotes.find(item => item.id === editingQuoteId);
+        if (q) q.text = newText;
+        document.getElementById('quote-edit-modal').style.display = 'none';
+        renderModalQuoteList();
+      } else {
+        alert('수정 실패');
+      }
+    }
+
+    async function deleteQuote(id) {
+      if (!confirm('정말 삭제하시겠습니까?')) return;
+      const { error } = await supabaseClient.from('quotes').delete().eq('id', id);
+      if (!error) {
+        sharedQuotes[currentActiveShimeji.id] = sharedQuotes[currentActiveShimeji.id].filter(q => q.id !== id);
+        renderModalQuoteList();
+      } else {
+        alert('삭제 실패');
+      }
+    }
+
+    function openExpressionModal() {
+      renderExpressionList();
+      document.getElementById('expression-modal').style.display = 'flex';
+    }
+
+    function renderExpressionList() {
+      const list = document.getElementById('expression-list');
+      list.innerHTML = '';
+      const exps = characterExpressions[currentActiveShimeji.id] || [];
+
+      if (exps.length === 0) {
+        list.innerHTML = '<li style="text-align:center; color:#aaa; padding:15px;">등록된 표정이 없습니다.</li>';
+        return;
+      }
+
+      exps.forEach(e => {
+        const li = document.createElement('li');
+        li.className = 'expression-item';
+        li.innerHTML = `<span class="quote-text">[${e.name}]</span> <button class="delete-btn" onclick="deleteExpression('${e.id}')">✕</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    async function submitAddExpression() {
+      const name = document.getElementById('exp-name-input').value.trim();
+      const url = document.getElementById('exp-url-input').value.trim();
+      if (!name || !url) { alert('이름과 URL을 모두 입력해주세요.'); return; }
+
+      const { data, error } = await supabaseClient.from('expressions').insert([{
+        character_id: currentActiveShimeji.id, name: name, url: url
+      }]).select();
+
+      if (!error && data) {
+        if (!characterExpressions[currentActiveShimeji.id]) characterExpressions[currentActiveShimeji.id] = [];
+        characterExpressions[currentActiveShimeji.id].push({ id: data[0].id, name: name, url: url });
+        document.getElementById('exp-name-input').value = '';
+        document.getElementById('exp-url-input').value = '';
+        renderExpressionList();
+      } else {
+        alert('표정 추가 실패');
+      }
+    }
+
+    async function deleteExpression(id) {
+      if (!confirm('표정을 삭제하시겠습니까?')) return;
+      const { error } = await supabaseClient.from('expressions').delete().eq('id', id);
+      if (!error) {
+        characterExpressions[currentActiveShimeji.id] = characterExpressions[currentActiveShimeji.id].filter(e => e.id !== id);
+        renderExpressionList();
+      } else {
+        alert('삭제 실패');
+      }
+    }
+  </script>
+</body>
+</html>
