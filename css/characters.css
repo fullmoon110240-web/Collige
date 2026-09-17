@@ -5,42 +5,35 @@
   position: relative;
   width: 100%;
   min-width: 0;
-  min-height: 0;
+  margin: 0;
+  padding: 0;
   transition: transform 0.2s;
   z-index: 1;
 }
 
-/* The character sits on the inside edge of its column. */
+/* Character cards touch the speech area directly. */
 #cole-card {
   grid-column: 1;
-  grid-row: 1;
   align-items: flex-end;
-  margin: 0;
-  padding: 0;
 }
 
 #ellie-card {
   grid-column: 3;
-  grid-row: 1;
   align-items: flex-start;
-  margin: 0;
-  padding: 0;
 }
 
 .character-side-card.drag-over {
   transform: scale(1.04);
 }
 
-#shimeji-cole {
-  width: clamp(60px, 13.75cqw, 110px);
-  height: clamp(60px, 13.75cqw, 110px);
-  align-self: flex-end;
-}
-
+/* The source character images are approximately 1084 x 909.
+   Matching the intrinsic ratio prevents artificial cropping or distortion. */
+#shimeji-cole,
 #shimeji-ellie {
-  width: clamp(66px, 15.125cqw, 121px);
-  height: clamp(66px, 15.125cqw, 121px);
-  align-self: flex-start;
+  width: 100%;
+  aspect-ratio: 1084 / 909;
+  height: auto;
+  flex: 0 0 auto;
 }
 
 .shimeji-avatar {
@@ -51,35 +44,38 @@
   justify-content: center;
   transition: transform 0.2s;
   outline: none;
-  flex: 0 0 auto;
+  overflow: visible;
 }
 
-.shimeji-avatar:hover { transform: scale(1.06); }
-.shimeji-avatar:focus-visible { transform: scale(1.06); }
+.shimeji-avatar:hover { transform: scale(1.035); }
+.shimeji-avatar:focus-visible { transform: scale(1.035); }
 
 .shimeji-avatar img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center bottom;
+  max-width: 100%;
+  max-height: 100%;
   filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.15));
   pointer-events: none;
 }
 
-/* Middle column: the two bubbles are a vertical stack. */
+/* The center column is intentionally narrower than the two character columns. */
 .speech-bubble-container {
   grid-column: 2;
-  grid-row: 1;
   width: 100%;
   min-width: 0;
   min-height: 0;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: stretch;
+  justify-content: flex-end;
   gap: clamp(3px, 0.75cqw, 7px);
   position: relative;
   z-index: 2;
+  align-self: end;
 }
 
 .speech-bubble-wrapper {
@@ -91,27 +87,21 @@
   flex: 0 0 auto;
 }
 
-/* Never hide one bubble because the other one is speaking. */
-.speech-bubble-container > .speech-bubble-wrapper:first-child,
-.speech-bubble-container > .speech-bubble-wrapper:last-child {
-  justify-content: center;
-  align-items: flex-start;
-}
-
 .speech-bubble-box {
   display: none;
   position: relative;
-  width: fit-content;
-  max-width: 96%;
+  width: 100%;
+  max-width: 100%;
   height: auto !important;
-  white-space: pre-wrap;
-  padding: clamp(4px, 0.75cqw, 7px) clamp(5px, 1cqw, 9px);
+  padding: clamp(5px, 0.9cqw, 8px) clamp(7px, 1.15cqw, 10px);
   border-radius: clamp(7px, 1.25cqw, 10px);
-  font-size: clamp(8px, 1.375cqw, 11px);
+  font-size: clamp(12px, 2cqw, 16.5px);
   font-weight: 600;
   text-align: center;
+  line-height: 1.48;
+  white-space: pre-wrap;
   word-break: keep-all;
-  line-height: 1.4;
+  overflow-wrap: anywhere;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
   animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   z-index: 10;
@@ -127,15 +117,14 @@
   background: #ffffff;
   border: 2px solid #ffffff;
   color: #3f548a;
-  text-align: center;
 }
 
 #bubble-cole::after {
   content: '';
   position: absolute;
-  top: 10px;
-  left: -8px;
-  border-width: 4px 8px 4px 0;
+  top: 12px;
+  left: -9px;
+  border-width: 5px 9px 5px 0;
   border-style: solid;
   border-color: transparent #ffffff;
   display: block;
@@ -146,15 +135,14 @@
   background: #ffffff;
   border: 2px solid #ffffff;
   color: #3E6B75;
-  text-align: center;
 }
 
 #bubble-ellie::after {
   content: '';
   position: absolute;
-  top: 10px;
-  right: -8px;
-  border-width: 4px 0 4px 8px;
+  top: 12px;
+  right: -9px;
+  border-width: 5px 0 5px 9px;
   border-style: solid;
   border-color: transparent #ffffff;
   display: block;
@@ -162,9 +150,9 @@
 
 .card-btn-group {
   display: flex;
+  width: 100%;
   gap: clamp(3px, 0.75cqw, 5px);
   margin-top: clamp(2px, 0.8cqw, 6px);
-  width: auto;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -195,23 +183,21 @@
 #ellie-card .action-icon-btn { color: #3E6B75; }
 
 .item-container {
-  width: 64%;
-  min-width: 0;
   container-type: inline-size;
-  height: auto;
-  margin: 0;
+  min-width: 0;
   padding: 0;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   align-items: center;
+  justify-items: center;
   z-index: 10;
 }
 
 .item-btn {
-  width: min(21.6cqw, 54px);
+  width: 100%;
   aspect-ratio: 1;
   height: auto;
   background: transparent;
@@ -226,15 +212,17 @@
   flex: 0 0 auto;
 }
 
-.item-btn:hover { transform: scale(1.3); }
-.item-btn:focus-visible { transform: scale(1.3); outline: none; }
+.item-btn:hover { transform: scale(1.22); }
+.item-btn:focus-visible { transform: scale(1.22); outline: none; }
 .item-btn:active { cursor: grabbing; }
 
 .item-btn img {
-  width: 50%;
-  height: 50%;
-  object-fit: contain;
   display: block;
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
   pointer-events: none;
 }
 
@@ -258,18 +246,19 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 110%;
-  max-width: 220px;
+  width: 78%;
+  max-width: 180px;
   box-sizing: border-box;
   background: linear-gradient(135deg, #ffffff 30%, rgba(255, 255, 255, 0.5) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   text-align: center;
-  padding: 20px 3px;
-  font-size: clamp(9px, 1.45cqw, 12px);
+  padding: 14px 2px;
+  font-size: clamp(9px, 1.35cqw, 12px);
   font-weight: 600;
   text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
   word-break: keep-all;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
   z-index: 30;
   pointer-events: none;
