@@ -12,7 +12,7 @@
 .worldview-bar {
   width: 55%;
   margin-inline: auto;
-  margin-bottom: clamp(8px, 3.4cqw, 22px);
+  margin-bottom: clamp(4px, 2.1cqw, 13px);
   container-type: inline-size;
   display: flex;
   align-items: center;
@@ -48,11 +48,17 @@
 .worldview-icon-btn:hover { transform: scale(1.15); }
 .worldview-icon-btn:focus-visible { transform: scale(1.15); }
 
-/* 항상 5칸만 보이는 창. 세계관이 5개를 넘을 때만 스크롤이 열립니다. */
+/*
+ * 세계관이 4개 이하면 가로로 넘칠 것이 없으므로 아예 자르지 않습니다.
+ * 4개를 넘겨 가로 스크롤을 켜면 세로도 함께 잘리게 되는데,
+ * 그때 캡슐의 그림자와 떠오르는 애니메이션이 깎이지 않도록 위아래 여유를 둡니다.
+ * 여유는 스크롤 여부와 상관없이 늘 같은 값이라 바 높이가 변하지 않습니다.
+ */
 .worldview-viewport {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
+  padding-block: clamp(3px, 1.3cqw, 10px);
+  overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
   overscroll-behavior-x: contain;
@@ -62,6 +68,7 @@
 
 .worldview-viewport.is-scrollable {
   overflow-x: auto;
+  overflow-y: hidden;
   touch-action: pan-x;
   cursor: grab;
 }
@@ -88,7 +95,7 @@
 .worldview-btn {
   width: 100%;
   min-width: 0;
-  height: clamp(24px, 8.4cqw, 46px);
+  height: clamp(23px, 8cqw, 44px);
   padding: clamp(2px, 0.8cqw, 6px) clamp(4px, 1.6cqw, 12px);
   border: 1px solid rgba(63, 95, 128, 0.14);
   border-radius: 999px;
