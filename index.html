@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/characters.css">
   <link rel="stylesheet" href="./css/modals.css">
+  <link rel="stylesheet" href="./css/worldview.css">
 </head>
 <body>
   <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
@@ -18,8 +19,51 @@
     </div>
   </div>
 
+  <script>
+    // 모듈 로딩이 실패하면 boot()이 실행되지 않아 로딩창이 그대로 남습니다.
+    // 그 경우 원인을 로딩창에 그대로 띄웁니다.
+    (function () {
+      var message = document.getElementById('loading-message');
+      var initial = message ? message.textContent : '';
+
+      function report(text) {
+        console.error('[boot]', text);
+        if (message) message.textContent = text;
+      }
+
+      window.addEventListener('error', function (event) {
+        if (event.target && event.target.tagName === 'SCRIPT') {
+          report('스크립트를 불러오지 못했습니다: ' + (event.target.src || ''));
+        } else if (event.message) {
+          report(event.message);
+        }
+      }, true);
+
+      window.addEventListener('unhandledrejection', function (event) {
+        var reason = event.reason;
+        report(String((reason && reason.message) || reason || '알 수 없는 오류'));
+      });
+
+      setTimeout(function () {
+        var overlay = document.getElementById('loading-overlay');
+        if (!overlay || overlay.classList.contains('is-hidden')) return;
+        if (message && message.textContent === initial) {
+          report('불러오기가 끝나지 않았습니다. Ctrl+Shift+R 로 강력 새로고침해 보시고, 그래도 같으면 F12 콘솔의 빨간 오류를 확인해 주세요.');
+        }
+      }, 10000);
+    })();
+  </script>
+
   <main class="app-shell">
     <div class="layout-stage">
+      <section class="worldview-bar" id="worldview-bar" aria-label="세계관">
+        <button id="worldview-list-btn" class="worldview-icon-btn" type="button" title="세계관 목록" aria-label="세계관 목록">≡</button>
+        <div class="worldview-viewport" id="worldview-viewport">
+          <div class="worldview-track" id="worldview-track"></div>
+        </div>
+        <button id="worldview-add-btn" class="worldview-icon-btn" type="button" title="세계관 추가" aria-label="세계관 추가">+</button>
+      </section>
+
       <section class="shimeji-section" aria-label="캐릭터">
       <div id="cole-card" class="character-side-card">
         <div id="shimeji-cole" class="shimeji-avatar" title="콜" role="button" tabindex="0" aria-label="콜">
@@ -150,6 +194,16 @@
     </div>
   </div>
 
+  <div id="worldview-select-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card modal-card-select" role="dialog" aria-modal="true" aria-labelledby="worldview-select-title">
+      <div class="modal-header">
+        <span id="worldview-select-title">세계관 선택</span>
+        <button id="worldview-select-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+      <ul id="worldview-select-list" class="modal-body"></ul>
+    </div>
+  </div>
+
   <div id="item-detail-modal" class="modal-overlay" aria-hidden="true">
     <div class="modal-card modal-card-item" role="dialog" aria-modal="true" aria-labelledby="item-detail-modal-title">
       <div class="modal-header">
@@ -171,6 +225,62 @@
         <button id="item-select-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
       </div>
       <ul id="item-select-list" class="modal-body"></ul>
+    </div>
+  </div>
+
+  <div id="worldview-list-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="worldview-list-modal-title">
+      <div class="modal-header">
+        <span id="worldview-list-modal-title">세계관 목록</span>
+        <button id="worldview-list-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+      <ul id="worldview-list" class="modal-body"></ul>
+    </div>
+  </div>
+
+  <div id="worldview-add-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card modal-card-edit" role="dialog" aria-modal="true" aria-labelledby="worldview-add-modal-title">
+      <div class="modal-header">
+        <span id="worldview-add-modal-title">세계관 추가</span>
+        <button id="worldview-add-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+      <div class="modal-input-box">
+        <input type="text" id="worldview-add-input" placeholder="추가할 세계관 이름을 입력하세요" autocomplete="off">
+        <button id="worldview-add-submit-btn" type="button">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="worldview-edit-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card modal-card-edit" role="dialog" aria-modal="true" aria-labelledby="worldview-edit-modal-title">
+      <div class="modal-header">
+        <span id="worldview-edit-modal-title">세계관 이름 수정</span>
+        <button id="worldview-edit-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+      <div class="modal-input-box">
+        <input type="text" id="worldview-edit-input" placeholder="세계관 이름" autocomplete="off">
+        <button id="worldview-edit-submit-btn" type="button">수정</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="worldview-image-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card modal-card-short" role="dialog" aria-modal="true" aria-labelledby="worldview-image-modal-title">
+      <div class="modal-header">
+        <span id="worldview-image-modal-title">세계관 기본 이미지</span>
+        <button id="worldview-image-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+      <div class="modal-input-box">
+        <label class="worldview-field">
+          <span>콜 기본 이미지</span>
+          <input type="url" id="worldview-image-cole-input" placeholder="비우면 원래 기본 이미지" autocomplete="off">
+        </label>
+        <label class="worldview-field">
+          <span>엘리 기본 이미지</span>
+          <input type="url" id="worldview-image-ellie-input" placeholder="비우면 원래 기본 이미지" autocomplete="off">
+        </label>
+        <button id="worldview-image-submit-btn" type="button">저장</button>
+      </div>
     </div>
   </div>
 

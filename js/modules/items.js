@@ -15,7 +15,8 @@ export function initializeItems() {
 
     button.addEventListener('dragstart', event => {
       event.dataTransfer.effectAllowed = 'copy';
-      event.dataTransfer.setData('text/plain', item.name);
+      // 표시 이름이 아니라 고정 키를 넘깁니다. 이름을 바꿔도 연결이 유지됩니다.
+      event.dataTransfer.setData('text/plain', itemId);
     });
   });
 
@@ -29,9 +30,9 @@ export function initializeItems() {
     card.addEventListener('drop', event => {
       event.preventDefault();
       card.classList.remove('drag-over');
-      const itemName = event.dataTransfer.getData('text/plain');
-      if (!itemName) return;
-      getCharacter(characterId)?.speakItemQuote(itemName);
+      const itemId = event.dataTransfer.getData('text/plain');
+      if (!itemId || !ITEM_DATA[itemId]) return;
+      getCharacter(characterId)?.speakItemQuote(itemId, ITEM_DATA[itemId].name);
     });
   }
 }
@@ -53,11 +54,11 @@ export function populateItemSelectList(onSelect) {
   defaultItem.addEventListener('click', () => onSelect(''));
   list.appendChild(defaultItem);
 
-  for (const item of Object.values(ITEM_DATA)) {
+  for (const [itemId, item] of Object.entries(ITEM_DATA)) {
     const li = document.createElement('li');
     li.className = 'expression-select-item';
     li.textContent = item.name;
-    li.addEventListener('click', () => onSelect(item.name));
+    li.addEventListener('click', () => onSelect(itemId));
     list.appendChild(li);
   }
 }

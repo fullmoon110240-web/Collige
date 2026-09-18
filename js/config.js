@@ -5,5 +5,7 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_kp8d3RAlM8bwQgf-CUc6Pg_Z
 
 export const TABLES = Object.freeze({
   quotes: 'quotes',
-  expressions: 'expressions'
+  expressions: 'expressions',
+  worldviews: 'worldviews',
+  worldviewCharacters: 'worldview_characters'
 });

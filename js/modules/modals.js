@@ -1,9 +1,34 @@
 import { ITEM_DATA } from '../data/items.js';
-import { state, getQuotes, getExpressions, upsertLocalExpression, removeLocalExpression, upsertLocalQuote } from '../state.js';
+import {
+  state,
+  getQuotes,
+  getVisibleQuotes,
+  getExpressions,
+  getVisibleExpressions,
+  getExpressionById,
+  getActiveWorldview,
+  sameWorldview,
+  upsertLocalExpression,
+  removeLocalExpression,
+  upsertLocalQuote
+} from '../state.js';
 import { createExpression, deleteExpression, updateExpression } from '../supabase.js';
-import { $, hideModal, isHttpUrl, showModal, flashError } from '../ui.js';
+import { $, hideModal, isHttpUrl, isTemporaryDriveUrl, normalizeImageUrl, showModal, flashError } from '../ui.js';
 import { getCharacter } from './characters.js';
 import { populateItemSelectList } from './items.js';
+import { isWorldviewAvailable } from './worldview.js';
+
+// 이 모달들은 열려 있는 캐릭터의 색을 따라갑니다. (콜=남색, 엘리=청록)
+const CHARACTER_THEMED_MODALS = [
+  'quote-modal',
+  'quote-add-modal',
+  'quote-edit-modal',
+  'expression-modal',
+  'expression-edit-modal',
+  'expression-select-modal',
+  'item-select-modal',
+  'worldview-select-modal'
+];
 
 export function initializeModals() {
   document.addEventListener('colliji:quote-add', event => {
@@ -16,6 +41,11 @@ export function initializeModals() {
     if (character) openQuoteModal(character);
   });
 
+  document.addEventListener('colliji:worldview-change', () => {
+    if (isModalOpen('quote-modal')) renderQuoteList();
+    if (isModalOpen('expression-modal')) renderExpressionList();
+  });
+
   const closers = [
     ['modal-close-btn', 'quote-modal'],
     ['quote-add-modal-close-btn', 'quote-add-modal'],
@@ -24,7 +54,8 @@ export function initializeModals() {
     ['exp-edit-modal-close-btn', 'expression-edit-modal'],
     ['exp-select-close-btn', 'expression-select-modal'],
     ['item-select-close-btn', 'item-select-modal'],
-    ['item-detail-close-btn', 'item-detail-modal']
+    ['item-detail-close-btn', 'item-detail-modal'],
+    ['worldview-select-close-btn', 'worldview-select-modal']
   ];
 
   for (const [buttonId, modalId] of closers) {
@@ -55,13 +86,21 @@ export function initializeModals() {
   }
 }
 
+// 모달 안의 모든 버튼/목록이 해당 캐릭터 색을 쓰도록 표시만 남깁니다. 색은 CSS가 결정합니다.
+function applyCharacterTheme() {
+  const characterId = state.activeCharacterId ?? '';
+  for (const modalId of CHARACTER_THEMED_MODALS) {
+    document.getElementById(modalId)?.setAttribute('data-character', characterId);
+  }
+}
+
 export function openQuoteAddModal(character) {
   state.activeCharacterId = character.id;
   state.pendingQuoteText = '';
+  applyCharacterTheme();
   $('quote-add-modal-title').textContent = `${character.name} 대사 추가`;
   $('quote-add-input').value = '';
   $('quote-add-item-checkbox').checked = false;
-  $('quote-add-submit-btn').classList.toggle('ellie-theme-btn', character.id === 'shimeji-ellie');
   showModal('quote-add-modal');
   $('quote-add-input').focus();
 }
@@ -93,7 +132,7 @@ function openItemSelectForNewQuote() {
   const list = $('item-select-list');
   list.replaceChildren();
 
-  for (const item of Object.values(ITEM_DATA)) {
+  for (const [itemId, item] of Object.entries(ITEM_DATA)) {
     const li = document.createElement('li');
     li.className = 'expression-select-item';
     li.textContent = item.name;
@@ -105,7 +144,7 @@ function openItemSelectForNewQuote() {
       if (!character || !text.trim()) return;
 
       await runBusy(async () => {
-        await character.addQuote(text, item.name);
+        await character.addQuote(text, itemId);
         if (isModalOpen('quote-modal')) renderQuoteList();
       }, '아이템 상호작용 대사를 저장하지 못했습니다.');
     });
@@ -117,6 +156,7 @@ function openItemSelectForNewQuote() {
 
 export function openQuoteModal(character) {
   state.activeCharacterId = character.id;
+  applyCharacterTheme();
   $('modal-title').textContent = `${character.name} 대사 목록`;
   renderQuoteList();
   showModal('quote-modal');
@@ -128,17 +168,22 @@ export function renderQuoteList() {
 
   const list = $('modal-quote-list');
   list.replaceChildren();
-  const quotes = getQuotes(character.id);
+  const quotes = getVisibleQuotes(character.id);
 
   if (quotes.length === 0) {
+    const worldview = getActiveWorldview();
     const empty = document.createElement('li');
     empty.className = 'empty-state';
-    empty.textContent = '등록된 대사가 없습니다.';
+    empty.textContent = worldview
+      ? `'${worldview.name}' 세계관에 등록된 대사가 없습니다.`
+      : '등록된 대사가 없습니다.';
     list.appendChild(empty);
     return;
   }
 
   const tagThemeClass = character.id === 'shimeji-cole' ? 'cole-tag' : 'ellie-tag';
+  const showWorldviewTag = isWorldviewAvailable();
+
   for (const quote of quotes) {
     const row = document.createElement('li');
     row.className = 'quote-row';
@@ -150,12 +195,44 @@ export function renderQuoteList() {
     const actions = document.createElement('div');
     actions.className = 'quote-actions';
 
-    const itemButton = createTagButton(quote.item_name, tagThemeClass, '기본', () => openItemSelectModalForQuote(quote.id));
-    const expressionButton = createTagButton(quote.image_title, tagThemeClass, '기본', () => openExpressionSelectModal(quote.id));
+    const itemButton = createTagButton(
+      ITEM_DATA[quote.item_id]?.name,
+      tagThemeClass,
+      '기본',
+      () => openItemSelectModalForQuote(quote.id)
+    );
+
+    const linkedExpression = getExpressionById(quote.expression_id);
+    const expressionButton = createTagButton(
+      linkedExpression?.name,
+      tagThemeClass,
+      '기본',
+      () => openExpressionSelectModal(quote.id)
+    );
+
+    // 대사와 표정의 세계관이 어긋나 있으면 눈에 띄게 표시합니다.
+    if (linkedExpression && !sameWorldview(linkedExpression.worldview_id, quote.worldview_id)) {
+      const other = state.worldviews.find(row2 => sameWorldview(row2.id, linkedExpression.worldview_id));
+      expressionButton.classList.add('is-mismatched');
+      expressionButton.title = `'${other?.name ?? '미분류'}' 세계관의 표정입니다. 눌러서 다시 지정하세요.`;
+    }
+
+    actions.append(itemButton, expressionButton);
+
+    if (showWorldviewTag) {
+      const worldview = state.worldviews.find(row2 => sameWorldview(row2.id, quote.worldview_id));
+      const worldviewButton = createTagButton(
+        worldview?.name,
+        tagThemeClass,
+        '미분류',
+        () => openWorldviewSelectModal(quote.id)
+      );
+      actions.append(worldviewButton);
+    }
 
     const editButton = document.createElement('button');
     editButton.type = 'button';
-    editButton.className = `quote-action-btn ${character.id === 'shimeji-ellie' ? 'edit-ellie' : 'edit-cole'}`;
+    editButton.className = 'quote-action-btn';
     editButton.textContent = '수정';
     editButton.addEventListener('click', () => openQuoteEditModal(quote));
 
@@ -166,7 +243,7 @@ export function renderQuoteList() {
     deleteButton.setAttribute('aria-label', '대사 삭제');
     deleteButton.addEventListener('click', () => deleteQuoteRow(quote));
 
-    actions.append(itemButton, expressionButton, editButton, deleteButton);
+    actions.append(editButton, deleteButton);
     row.append(text, actions);
     list.appendChild(row);
   }
@@ -178,6 +255,7 @@ function createTagButton(value, theme, fallback, handler) {
   const hasValue = String(value ?? '').trim() !== '';
   button.className = `quote-tag-btn ${hasValue ? `active-tag ${theme}` : 'default-tag'}`;
   button.textContent = hasValue ? value : fallback;
+  button.title = hasValue ? value : fallback;
   button.addEventListener('click', handler);
   return button;
 }
@@ -185,16 +263,32 @@ function createTagButton(value, theme, fallback, handler) {
 export function openItemSelectModalForQuote(quoteId) {
   const character = getActiveCharacter();
   if (!character) return;
-  populateItemSelectList(async itemName => {
+  populateItemSelectList(async itemId => {
     hideModal('item-select-modal');
-    await saveQuotePatch(quoteId, { item_name: itemName });
+    await saveQuotePatch(quoteId, { item_id: itemId });
   });
   showModal('item-select-modal');
 }
 
+/**
+ * 대사에 붙일 표정을 고릅니다.
+ *
+ * 중요: 지금 선택된 세계관이 아니라 "그 대사가 속한 세계관"의 표정만 보여줍니다.
+ * 세계관을 전부 해제한 상태에서는 모든 세계관의 표정이 섞여 보이는데,
+ * 이름이 같은 표정이 여러 세계관에 있으면 목록에서 구분할 수가 없어
+ * 엉뚱한 세계관의 표정을 붙이게 됩니다.
+ */
 export function openExpressionSelectModal(quoteId) {
   const character = getActiveCharacter();
   if (!character) return;
+
+  const quote = getQuotes(character.id).find(row => row.id === quoteId);
+  if (!quote) return;
+
+  const quoteWorldview = state.worldviews.find(row => sameWorldview(row.id, quote.worldview_id));
+  $('expression-select-title').textContent = quoteWorldview
+    ? `표정 선택 · ${quoteWorldview.name}`
+    : '표정 선택';
 
   const list = $('expression-select-list');
   list.replaceChildren();
@@ -204,17 +298,31 @@ export function openExpressionSelectModal(quoteId) {
   defaultLi.textContent = '[기본] (이미지 없음)';
   defaultLi.addEventListener('click', async () => {
     hideModal('expression-select-modal');
-    await saveQuotePatch(quoteId, { image: '', image_title: '' });
+    await saveQuotePatch(quoteId, { expression_id: null });
   });
   list.appendChild(defaultLi);
 
-  for (const expression of getExpressions(character.id)) {
+  const options = getExpressions(character.id).filter(row =>
+    sameWorldview(row.worldview_id, quote.worldview_id)
+  );
+
+  if (options.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-state';
+    empty.textContent = quoteWorldview
+      ? `'${quoteWorldview.name}' 세계관에 등록된 표정이 없습니다.`
+      : '미분류 표정이 없습니다.';
+    list.appendChild(empty);
+  }
+
+  for (const expression of options) {
     const li = document.createElement('li');
     li.className = 'expression-select-item';
+    if (String(expression.id) === String(quote.expression_id)) li.classList.add('is-current');
     li.textContent = `[${expression.name}]`;
     li.addEventListener('click', async () => {
       hideModal('expression-select-modal');
-      await saveQuotePatch(quoteId, { image: expression.url, image_title: expression.name });
+      await saveQuotePatch(quoteId, { expression_id: expression.id });
     });
     list.appendChild(li);
   }
@@ -222,11 +330,80 @@ export function openExpressionSelectModal(quoteId) {
   showModal('expression-select-modal');
 }
 
+/**
+ * 이미 등록된 대사의 세계관을 바꿉니다.
+ * 표정은 세계관별로 따로 관리되므로, 옮긴 세계관에 같은 이름의 표정이 있으면
+ * 그쪽으로 다시 연결하고, 없으면 물어본 뒤 표정을 해제합니다.
+ */
+export function openWorldviewSelectModal(quoteId) {
+  const character = getActiveCharacter();
+  if (!character) return;
+
+  const quote = getQuotes(character.id).find(row => row.id === quoteId);
+  if (!quote) return;
+
+  const list = $('worldview-select-list');
+  list.replaceChildren();
+
+  const defaultLi = document.createElement('li');
+  defaultLi.className = 'expression-select-item default-tag';
+  defaultLi.textContent = '[미분류] (세계관 없음)';
+  defaultLi.addEventListener('click', () => chooseWorldview(quote, null));
+  list.appendChild(defaultLi);
+
+  if (state.worldviews.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-state';
+    empty.textContent = '등록된 세계관이 없습니다.';
+    list.appendChild(empty);
+  }
+
+  for (const worldview of state.worldviews) {
+    const li = document.createElement('li');
+    li.className = 'expression-select-item';
+    if (sameWorldview(worldview.id, quote.worldview_id)) li.classList.add('is-current');
+    li.textContent = `[${worldview.name}]`;
+    li.addEventListener('click', () => chooseWorldview(quote, worldview.id));
+    list.appendChild(li);
+  }
+
+  showModal('worldview-select-modal');
+}
+
+async function chooseWorldview(quote, worldviewId) {
+  if (sameWorldview(quote.worldview_id, worldviewId)) {
+    hideModal('worldview-select-modal');
+    return;
+  }
+
+  const patch = { worldview_id: worldviewId ?? null };
+  const current = getExpressionById(quote.expression_id);
+
+  if (current && !sameWorldview(current.worldview_id, worldviewId)) {
+    const replacement = getExpressions(quote.character_id).find(
+      row => row.name === current.name && sameWorldview(row.worldview_id, worldviewId)
+    );
+
+    if (replacement) {
+      patch.expression_id = replacement.id;
+    } else {
+      const moved = confirm(
+        `옮기려는 세계관에 '${current.name}' 표정이 없습니다.\n\n표정을 해제하고 대사만 옮길까요?`
+      );
+      if (!moved) return;
+      patch.expression_id = null;
+    }
+  }
+
+  hideModal('worldview-select-modal');
+  await saveQuotePatch(quote.id, patch);
+}
+
 export function openQuoteEditModal(quote) {
   state.editingQuoteId = quote.id;
   state.editingQuote = quote;
+  applyCharacterTheme();
   $('quote-edit-input').value = quote.text ?? '';
-  $('quote-edit-submit-btn').classList.toggle('ellie-theme-btn', state.activeCharacterId === 'shimeji-ellie');
   showModal('quote-edit-modal');
   $('quote-edit-input').focus();
 }
@@ -260,6 +437,7 @@ async function deleteQuoteRow(quote) {
 }
 
 export function openExpressionModal() {
+  applyCharacterTheme();
   renderExpressionList();
   showModal('expression-modal');
 }
@@ -270,12 +448,15 @@ function renderExpressionList() {
 
   const list = $('expression-list');
   list.replaceChildren();
-  const expressions = getExpressions(character.id);
+  const expressions = getVisibleExpressions(character.id);
 
   if (expressions.length === 0) {
+    const worldview = getActiveWorldview();
     const empty = document.createElement('li');
     empty.className = 'empty-state';
-    empty.textContent = '등록된 표정이 없습니다.';
+    empty.textContent = worldview
+      ? `'${worldview.name}' 세계관에 등록된 표정이 없습니다.`
+      : '등록된 표정이 없습니다.';
     list.appendChild(empty);
     return;
   }
@@ -293,7 +474,7 @@ function renderExpressionList() {
 
     const edit = document.createElement('button');
     edit.type = 'button';
-    edit.className = `quote-action-btn ${character.id === 'shimeji-ellie' ? 'edit-ellie' : 'edit-cole'}`;
+    edit.className = 'quote-action-btn';
     edit.textContent = '수정';
     edit.addEventListener('click', () => openExpressionEditModal(expression));
 
@@ -310,12 +491,22 @@ function renderExpressionList() {
   }
 }
 
+
+// 만료되는 임시 링크면 한 번 알려주고, 그래도 쓰겠다면 그대로 진행합니다.
+function confirmTemporaryUrl(url) {
+  if (!isTemporaryDriveUrl(url)) return true;
+  return confirm(
+    '드라이브 미리보기에서 복사한 임시 주소로 보입니다.\n시간이 지나면 이미지가 깨집니다.\n\n' +
+      '드라이브에서 파일 공유 링크를 복사해 쓰는 편이 좋습니다.\n그래도 이대로 등록할까요?'
+  );
+}
+
 async function submitAddExpression() {
   const character = getActiveCharacter();
   if (!character) return;
 
   const name = $('exp-name-input').value.trim();
-  const url = $('exp-url-input').value.trim();
+  const url = normalizeImageUrl($('exp-url-input').value);
   if (!name || !url) {
     alert('이름과 URL을 모두 입력해주세요.');
     return;
@@ -324,9 +515,15 @@ async function submitAddExpression() {
     alert('이미지 URL은 http:// 또는 https://로 시작해야 합니다.');
     return;
   }
+  if (!confirmTemporaryUrl(url)) return;
 
   await runBusy(async () => {
-    const row = await createExpression({ characterId: character.id, name, url });
+    const row = await createExpression({
+      characterId: character.id,
+      name,
+      url,
+      worldviewId: state.activeWorldviewId
+    });
     upsertLocalExpression(row);
     $('exp-name-input').value = '';
     $('exp-url-input').value = '';
@@ -337,6 +534,7 @@ async function submitAddExpression() {
 function openExpressionEditModal(expression) {
   state.editingExpressionId = expression.id;
   state.editingExpression = expression;
+  applyCharacterTheme();
   $('exp-edit-name-input').value = expression.name ?? '';
   $('exp-edit-url-input').value = expression.url ?? '';
   showModal('expression-edit-modal');
@@ -347,7 +545,7 @@ async function submitEditExpression() {
   if (!character || !state.editingExpressionId) return;
 
   const name = $('exp-edit-name-input').value.trim();
-  const url = $('exp-edit-url-input').value.trim();
+  const url = normalizeImageUrl($('exp-edit-url-input').value);
   if (!name || !url) {
     alert('표정 이름과 URL은 비워둘 수 없습니다.');
     return;
@@ -356,22 +554,13 @@ async function submitEditExpression() {
     alert('이미지 URL은 http:// 또는 https://로 시작해야 합니다.');
     return;
   }
+  if (!confirmTemporaryUrl(url)) return;
 
   await runBusy(async () => {
+    // 대사는 expression_id로만 표정을 가리키므로, 이름과 URL을 고쳐도
+    // 따로 맞춰줄 곳이 없습니다. (예전의 동기화 트리거가 하던 일입니다)
     const row = await updateExpression(state.editingExpressionId, { name, url });
     upsertLocalExpression(row);
-
-    // DB trigger가 연결된 대사의 image/image_title을 함께 변경한다.
-    // 해당 결과를 로컬에도 반영하여 새로고침 전 UI도 서버와 동일하게 유지한다.
-    const old = state.editingExpression;
-    if (old && (old.name !== name || old.url !== url)) {
-      for (const quote of getQuotes(character.id)) {
-        if (quote.image_title === old.name) {
-          quote.image = url;
-          quote.image_title = name;
-        }
-      }
-    }
 
     state.editingExpressionId = null;
     state.editingExpression = null;
@@ -386,15 +575,9 @@ async function deleteExpressionRow(expression) {
   if (!character || !confirm(`'${expression.name}' 표정을 삭제하시겠습니까?`)) return;
 
   await runBusy(async () => {
+    // DB는 on delete set null, 로컬은 removeLocalExpression이 함께 정리합니다.
     await deleteExpression(expression.id);
     removeLocalExpression(expression.id, character.id);
-
-    for (const quote of getQuotes(character.id)) {
-      if (quote.image_title === expression.name) {
-        quote.image = '';
-        quote.image_title = '';
-      }
-    }
 
     renderExpressionList();
     if (isModalOpen('quote-modal')) renderQuoteList();

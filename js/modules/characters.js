@@ -1,5 +1,14 @@
 import { CHARACTER_DATA } from '../data/characters.js';
-import { state, getQuotes, upsertLocalQuote, removeLocalQuote } from '../state.js';
+import {
+  state,
+  getQuotes,
+  getVisibleQuotes,
+  getVisibleExpressions,
+  getWorldviewImage,
+  getExpressionById,
+  upsertLocalQuote,
+  removeLocalQuote
+} from '../state.js';
 import { createQuote, deleteQuote, updateQuote } from '../supabase.js';
 import { $ } from '../ui.js';
 
@@ -15,16 +24,45 @@ export class ShimejiCharacter {
     this.card = $(config.cardId);
     this.addButton = $(config.addButtonId);
     this.listButton = $(config.listButtonId);
-    this.defaultImage = config.defaultImage;
+    this.fallbackImage = config.defaultImage;
     this.timer = null;
 
     this.image.src = this.defaultImage;
+    this.image.addEventListener('error', () => this.handleImageError());
     this.bindEvents();
   }
 
   get id() { return this.config.id; }
+
+  // 말풍선이 없는 평상시 이미지.
+  // 세계관이 선택되어 있으면 그 세계관의 기본 이미지를, 없으면 원래 기본 이미지를 씁니다.
+  get defaultImage() {
+    return getWorldviewImage(state.activeWorldviewId, this.id) || this.fallbackImage;
+  }
+
+  /**
+   * 대사를 말할 때 쓸 기본 이미지.
+   *
+   * 세계관을 전부 해제하면 모든 세계관의 대사가 섞여 나옵니다.
+   * 이때는 "지금 선택된 세계관"이 아니라 "그 대사가 속한 세계관"을 따라가야
+   * 중세 대사에 중세 모습이, 학원 대사에 학원 모습이 나옵니다.
+   * 미분류 대사이거나 그 세계관에 지정된 이미지가 없으면 원래 기본 이미지를 씁니다.
+   */
+  baseImageFor(quote) {
+    const worldviewId = quote?.worldview_id ?? state.activeWorldviewId;
+    return getWorldviewImage(worldviewId, this.id) || this.fallbackImage;
+  }
+
   get name() { return this.config.name; }
   get color() { return this.config.color; }
+
+  // 이미지가 깨지면 엑박 대신 원래 기본 이미지로 돌아가고, 콘솔에 주소를 남깁니다.
+  handleImageError() {
+    const failed = this.image.src;
+    if (!failed || failed === this.fallbackImage) return;
+    console.warn(`[image] 불러오지 못했습니다: ${failed}`);
+    this.image.src = this.fallbackImage;
+  }
 
   bindEvents() {
     const activate = event => {
@@ -48,16 +86,36 @@ export class ShimejiCharacter {
     });
   }
 
+  // 현재 세계관에 해당하는 것만. 전부 해제 상태면 전체가 섞여 나옵니다.
   getQuotes() {
+    return getVisibleQuotes(this.id);
+  }
+
+  getAllQuotes() {
     return getQuotes(this.id);
   }
 
   getExpressions() {
-    return state.expressionsByCharacter[this.id] ?? [];
+    return getVisibleExpressions(this.id);
   }
 
-  async addQuote(text, itemName = '') {
-    const row = await createQuote({ characterId: this.id, text, itemName });
+  // 세계관을 바꾸면 말풍선을 닫고 기본 이미지를 다시 맞춥니다.
+  resetToDefault() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.bubble.style.display = 'none';
+    this.image.src = this.defaultImage;
+  }
+
+  async addQuote(text, itemId = '') {
+    const row = await createQuote({
+      characterId: this.id,
+      text,
+      itemId,
+      worldviewId: state.activeWorldviewId
+    });
     upsertLocalQuote(row);
     return row;
   }
@@ -75,16 +133,16 @@ export class ShimejiCharacter {
 
   speakRandomQuote(event) {
     hideGuide();
-    const baseQuotes = this.getQuotes().filter(q => !String(q.item_name ?? '').trim());
+    const baseQuotes = this.getQuotes().filter(q => !String(q.item_id ?? '').trim());
     if (baseQuotes.length === 0) return;
     showHeart(this, event);
     const quote = baseQuotes[Math.floor(Math.random() * baseQuotes.length)];
     this.displayQuote(quote);
   }
 
-  speakItemQuote(itemName) {
+  speakItemQuote(itemId, itemName = itemId) {
     hideGuide();
-    const itemQuotes = this.getQuotes().filter(q => String(q.item_name ?? '') === itemName);
+    const itemQuotes = this.getQuotes().filter(q => String(q.item_id ?? '') === itemId);
     if (itemQuotes.length === 0) {
       alert(`${this.name}에게 등록된 '${itemName}' 상호작용 대사가 없습니다.`);
       return;
@@ -95,7 +153,10 @@ export class ShimejiCharacter {
   displayQuote(quote) {
     this.bubble.textContent = String(quote.text ?? '');
     this.bubble.style.display = 'block';
-    this.image.src = String(quote.image ?? '').trim() || this.defaultImage;
+    // 표정 URL은 expressions 테이블 한 곳에만 있습니다. 여기서 찾아 씁니다.
+    // 표정이 없으면 그 대사가 속한 세계관의 기본 이미지로 말합니다.
+    const expression = getExpressionById(quote.expression_id);
+    this.image.src = String(expression?.url ?? '').trim() || this.baseImageFor(quote);
 
     this.bubble.style.animation = 'none';
     void this.bubble.offsetHeight;
@@ -113,6 +174,12 @@ export function initializeCharacters() {
   for (const config of Object.values(CHARACTER_DATA)) {
     characters.set(config.id, new ShimejiCharacter(config));
   }
+
+  document.addEventListener('colliji:worldview-change', refreshCharacterImages);
+}
+
+export function refreshCharacterImages() {
+  for (const character of characters.values()) character.resetToDefault();
 }
 
 export function getCharacter(id) {
