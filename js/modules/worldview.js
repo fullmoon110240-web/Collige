@@ -17,8 +17,8 @@ import {
 } from '../supabase.js';
 import { $, flashError, hideModal, isHttpUrl, normalizeImageUrl, showModal } from '../ui.js';
 
-// 화면에는 항상 5칸만 보입니다. 5개를 넘으면 좌우로 무한 순환 스크롤됩니다.
-const VISIBLE_SLOTS = 5;
+// 화면에는 항상 4칸만 보입니다. 4개를 넘으면 좌우로 무한 순환 스크롤됩니다.
+const VISIBLE_SLOTS = 4;
 const STORAGE_KEY = 'colliji:active-worldview';
 const DRAG_THRESHOLD = 6;
 
@@ -267,8 +267,7 @@ function bindModalEvents() {
   const closers = [
     ['worldview-list-close-btn', 'worldview-list-modal'],
     ['worldview-add-close-btn', 'worldview-add-modal'],
-    ['worldview-edit-close-btn', 'worldview-edit-modal'],
-    ['worldview-image-close-btn', 'worldview-image-modal']
+    ['worldview-edit-close-btn', 'worldview-edit-modal']
   ];
   for (const [buttonId, modalId] of closers) {
     $(buttonId).addEventListener('click', () => hideModal(modalId));
@@ -285,7 +284,6 @@ function bindModalEvents() {
   });
   $('worldview-add-submit-btn').addEventListener('click', submitAddWorldview);
   $('worldview-edit-submit-btn').addEventListener('click', submitEditWorldview);
-  $('worldview-image-submit-btn').addEventListener('click', submitWorldviewImages);
 
   $('worldview-add-input').addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
@@ -303,7 +301,7 @@ function bindModalEvents() {
     $(inputId).addEventListener('keydown', event => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
-      submitWorldviewImages();
+      submitEditWorldview();
     });
   }
 }
@@ -366,12 +364,6 @@ function renderWorldviewList() {
     const actions = document.createElement('div');
     actions.className = 'worldview-row-actions';
 
-    const imageButton = document.createElement('button');
-    imageButton.type = 'button';
-    imageButton.className = 'worldview-action-btn is-ghost';
-    imageButton.textContent = '이미지';
-    imageButton.addEventListener('click', () => openWorldviewImageModal(worldview));
-
     const editButton = document.createElement('button');
     editButton.type = 'button';
     editButton.className = 'worldview-action-btn';
@@ -385,7 +377,7 @@ function renderWorldviewList() {
     deleteButton.setAttribute('aria-label', '세계관 삭제');
     deleteButton.addEventListener('click', () => deleteWorldviewRow(worldview));
 
-    actions.append(imageButton, editButton, deleteButton);
+    actions.append(editButton, deleteButton);
     row.append(name, actions);
     list.appendChild(row);
   }
@@ -393,7 +385,10 @@ function renderWorldviewList() {
 
 function openWorldviewEditModal(worldview) {
   state.editingWorldviewId = worldview.id;
+  $('worldview-edit-modal-title').textContent = `${worldview.name} 수정`;
   $('worldview-edit-input').value = worldview.name ?? '';
+  $('worldview-image-cole-input').value = getWorldviewImage(worldview.id, 'shimeji-cole');
+  $('worldview-image-ellie-input').value = getWorldviewImage(worldview.id, 'shimeji-ellie');
   showModal('worldview-edit-modal');
   $('worldview-edit-input').focus();
 }
@@ -413,9 +408,31 @@ async function submitEditWorldview() {
     return;
   }
 
+  const images = [
+    ['shimeji-cole', normalizeImageUrl($('worldview-image-cole-input').value)],
+    ['shimeji-ellie', normalizeImageUrl($('worldview-image-ellie-input').value)]
+  ];
+
+  for (const [characterId, url] of images) {
+    if (url && !isHttpUrl(url)) {
+      const label = CHARACTER_DATA[characterId]?.name ?? characterId;
+      alert(`${label} 기본 이미지 URL은 http:// 또는 https://로 시작해야 합니다.`);
+      return;
+    }
+  }
+
   await runBusy(async () => {
-    const row = await updateWorldview(id, { name });
-    upsertLocalWorldview(row);
+    const current = state.worldviews.find(row => String(row.id) === String(id));
+    if (!current || current.name !== name) {
+      upsertLocalWorldview(await updateWorldview(id, { name }));
+    }
+
+    for (const [characterId, url] of images) {
+      if (getWorldviewImage(id, characterId) === url) continue;
+      await saveWorldviewImage({ worldviewId: id, characterId, url });
+      setWorldviewImage(id, characterId, url);
+    }
+
     state.editingWorldviewId = null;
     hideModal('worldview-edit-modal');
     renderTrack();
@@ -441,50 +458,6 @@ async function deleteWorldviewRow(worldview) {
     if (wasActive) applySelection(null);
     else notifyWorldviewChanged();
   }, '세계관을 삭제하지 못했습니다.');
-}
-
-function openWorldviewImageModal(worldview) {
-  state.editingWorldviewId = worldview.id;
-  $('worldview-image-modal-title').textContent = `${worldview.name} 기본 이미지`;
-  $('worldview-image-cole-input').value = getWorldviewImage(worldview.id, 'shimeji-cole');
-  $('worldview-image-ellie-input').value = getWorldviewImage(worldview.id, 'shimeji-ellie');
-  showModal('worldview-image-modal');
-  $('worldview-image-cole-input').focus();
-}
-
-async function submitWorldviewImages() {
-  const id = state.editingWorldviewId;
-  if (!id) return;
-
-  const entries = [
-    ['shimeji-cole', normalizeImageUrl($('worldview-image-cole-input').value)],
-    ['shimeji-ellie', normalizeImageUrl($('worldview-image-ellie-input').value)]
-  ];
-
-  for (const [characterId, url] of entries) {
-    if (url && !isHttpUrl(url)) {
-      const label = CHARACTER_DATA[characterId]?.name ?? characterId;
-      alert(`${label} 기본 이미지 URL은 http:// 또는 https://로 시작해야 합니다.`);
-      return;
-    }
-  }
-
-  await runBusy(async () => {
-    for (const [characterId, url] of entries) {
-      await saveWorldviewImage({ worldviewId: id, characterId, url });
-      setWorldviewImage(id, characterId, url);
-    }
-
-    state.editingWorldviewId = null;
-    hideModal('worldview-image-modal');
-
-    // 지금 보고 있는 세계관의 이미지를 고쳤다면 화면에도 바로 반영합니다.
-    if (String(id) === state.activeWorldviewId) {
-      document.dispatchEvent(
-        new CustomEvent('colliji:worldview-change', { detail: { worldviewId: state.activeWorldviewId } })
-      );
-    }
-  }, '세계관 기본 이미지를 저장하지 못했습니다.');
 }
 
 /* ------------------------------------------------------------------ */

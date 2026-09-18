@@ -10,14 +10,23 @@
 
 .modal-overlay.is-open { display: flex; }
 
+/*
+ * 겹침 순서. 뒤에서 열리는 창일수록 위로 옵니다.
+ *   대사 목록 -> 대사 수정 -> 아이템/표정/세계관 선택
+ *   세계관 목록 -> 세계관 수정 / 표정 목록 -> 표정 수정
+ */
 #quote-modal { z-index: 1000; }
-#expression-modal { z-index: 1001; }
-#expression-select-modal { z-index: 1002; }
-#item-select-modal { z-index: 1002; }
-#quote-add-modal { z-index: 1003; }
-#quote-edit-modal { z-index: 1004; }
-#expression-edit-modal { z-index: 1005; }
-#item-detail-modal { z-index: 1006; }
+#quote-add-modal { z-index: 1002; }
+#worldview-list-modal { z-index: 1010; }
+#worldview-add-modal { z-index: 1012; }
+#worldview-edit-modal { z-index: 1012; }
+#expression-modal { z-index: 1012; }
+#expression-edit-modal { z-index: 1014; }
+#quote-edit-modal { z-index: 1020; }
+#expression-select-modal { z-index: 1030; }
+#item-select-modal { z-index: 1030; }
+#worldview-select-modal { z-index: 1030; }
+#item-detail-modal { z-index: 1040; }
 
 .modal-card {
   background: #ffffff;
@@ -49,7 +58,7 @@
 .modal-header-btns {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
 }
 
 .modal-close-btn {
@@ -375,3 +384,50 @@
   background-color: #fff8e1 !important;
   border: 1px solid #e0a800 !important;
 }
+
+/* ---- 대사 수정 모달: 입력창과 수정 버튼 사이의 태그 줄 ---- */
+.quote-edit-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 7px 14px;
+  padding: 4px 0 2px;
+}
+
+.quote-edit-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.quote-edit-tag[hidden] { display: none; }
+
+.quote-edit-tag-label {
+  font-size: 11px;
+  color: #7a8490;
+  white-space: nowrap;
+}
+
+.quote-edit-tags .quote-tag-btn { max-width: 88px; }
+
+/* ---- 표정 목록 모달의 콜 / 엘리 전환 ----
+   상자 없이 글자만 두고, 선택된 쪽만 그 캐릭터 색으로 켭니다. */
+.character-tab-btn {
+  border: none;
+  background: transparent;
+  color: #b9c0ca;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.character-tab-btn:hover { color: #8a94a3; }
+
+#expression-character-cole-btn.is-active { color: #3f548a; }
+#expression-character-ellie-btn.is-active { color: #3E6B75; }

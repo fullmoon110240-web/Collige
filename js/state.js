@@ -9,6 +9,8 @@ export const state = {
   worldviewSupported: false,
   activeWorldviewId: null,
   activeCharacterId: null,
+  // 표정 목록은 세계관 목록에서 열리므로 대사 목록과 별개로 캐릭터를 기억합니다.
+  expressionCharacterId: 'shimeji-cole',
   editingQuoteId: null,
   editingExpressionId: null,
   editingQuote: null,

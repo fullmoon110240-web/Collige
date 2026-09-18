@@ -23,12 +23,15 @@ const CHARACTER_THEMED_MODALS = [
   'quote-modal',
   'quote-add-modal',
   'quote-edit-modal',
-  'expression-modal',
-  'expression-edit-modal',
   'expression-select-modal',
   'item-select-modal',
   'worldview-select-modal'
 ];
+
+// 표정 목록은 세계관 목록에서 열리므로, 어느 캐릭터의 표정인지 따로 기억합니다.
+function getExpressionCharacter() {
+  return getCharacter(state.expressionCharacterId) ?? getCharacter('shimeji-cole');
+}
 
 export function initializeModals() {
   document.addEventListener('colliji:quote-add', event => {
@@ -68,7 +71,24 @@ export function initializeModals() {
     });
   });
 
-  $('expression-manage-btn').addEventListener('click', openExpressionModal);
+  $('expression-manage-btn').addEventListener('click', () => openExpressionModal());
+
+  for (const buttonId of ['expression-character-cole-btn', 'expression-character-ellie-btn']) {
+    $(buttonId).addEventListener('click', event => {
+      state.expressionCharacterId = event.currentTarget.dataset.characterId;
+      openExpressionModal();
+    });
+  }
+
+  $('quote-edit-item-btn').addEventListener('click', () => {
+    if (state.editingQuoteId) openItemSelectModalForQuote(state.editingQuoteId);
+  });
+  $('quote-edit-expression-btn').addEventListener('click', () => {
+    if (state.editingQuoteId) openExpressionSelectModal(state.editingQuoteId);
+  });
+  $('quote-edit-worldview-btn').addEventListener('click', () => {
+    if (state.editingQuoteId) openWorldviewSelectModal(state.editingQuoteId);
+  });
   $('quote-add-submit-btn').addEventListener('click', submitAddQuote);
   $('quote-edit-submit-btn').addEventListener('click', submitEditQuote);
   $('add-expression-btn').addEventListener('click', submitAddExpression);
@@ -181,9 +201,6 @@ export function renderQuoteList() {
     return;
   }
 
-  const tagThemeClass = character.id === 'shimeji-cole' ? 'cole-tag' : 'ellie-tag';
-  const showWorldviewTag = isWorldviewAvailable();
-
   for (const quote of quotes) {
     const row = document.createElement('li');
     row.className = 'quote-row';
@@ -194,41 +211,6 @@ export function renderQuoteList() {
 
     const actions = document.createElement('div');
     actions.className = 'quote-actions';
-
-    const itemButton = createTagButton(
-      ITEM_DATA[quote.item_id]?.name,
-      tagThemeClass,
-      '기본',
-      () => openItemSelectModalForQuote(quote.id)
-    );
-
-    const linkedExpression = getExpressionById(quote.expression_id);
-    const expressionButton = createTagButton(
-      linkedExpression?.name,
-      tagThemeClass,
-      '기본',
-      () => openExpressionSelectModal(quote.id)
-    );
-
-    // 대사와 표정의 세계관이 어긋나 있으면 눈에 띄게 표시합니다.
-    if (linkedExpression && !sameWorldview(linkedExpression.worldview_id, quote.worldview_id)) {
-      const other = state.worldviews.find(row2 => sameWorldview(row2.id, linkedExpression.worldview_id));
-      expressionButton.classList.add('is-mismatched');
-      expressionButton.title = `'${other?.name ?? '미분류'}' 세계관의 표정입니다. 눌러서 다시 지정하세요.`;
-    }
-
-    actions.append(itemButton, expressionButton);
-
-    if (showWorldviewTag) {
-      const worldview = state.worldviews.find(row2 => sameWorldview(row2.id, quote.worldview_id));
-      const worldviewButton = createTagButton(
-        worldview?.name,
-        tagThemeClass,
-        '미분류',
-        () => openWorldviewSelectModal(quote.id)
-      );
-      actions.append(worldviewButton);
-    }
 
     const editButton = document.createElement('button');
     editButton.type = 'button';
@@ -249,15 +231,31 @@ export function renderQuoteList() {
   }
 }
 
-function createTagButton(value, theme, fallback, handler) {
-  const button = document.createElement('button');
-  button.type = 'button';
+// 아이템 / 표정 / 세계관은 대사 수정 모달 안에서 바꿉니다.
+function renderQuoteEditTags(quote) {
+  const themeClass = quote.character_id === 'shimeji-cole' ? 'cole-tag' : 'ellie-tag';
+
+  applyTagButton($('quote-edit-item-btn'), ITEM_DATA[quote.item_id]?.name, themeClass, '기본');
+
+  const expression = getExpressionById(quote.expression_id);
+  applyTagButton($('quote-edit-expression-btn'), expression?.name, themeClass, '기본');
+  const mismatched = Boolean(expression) && !sameWorldview(expression.worldview_id, quote.worldview_id);
+  $('quote-edit-expression-btn').classList.toggle('is-mismatched', mismatched);
+  if (mismatched) {
+    const other = state.worldviews.find(row => sameWorldview(row.id, expression.worldview_id));
+    $('quote-edit-expression-btn').title = `'${other?.name ?? '미분류'}' 세계관의 표정입니다.`;
+  }
+
+  const worldview = state.worldviews.find(row => sameWorldview(row.id, quote.worldview_id));
+  applyTagButton($('quote-edit-worldview-btn'), worldview?.name, themeClass, '미분류');
+  $('quote-edit-worldview-wrap').hidden = !isWorldviewAvailable();
+}
+
+function applyTagButton(button, value, theme, fallback) {
   const hasValue = String(value ?? '').trim() !== '';
   button.className = `quote-tag-btn ${hasValue ? `active-tag ${theme}` : 'default-tag'}`;
   button.textContent = hasValue ? value : fallback;
   button.title = hasValue ? value : fallback;
-  button.addEventListener('click', handler);
-  return button;
 }
 
 export function openItemSelectModalForQuote(quoteId) {
@@ -404,6 +402,7 @@ export function openQuoteEditModal(quote) {
   state.editingQuote = quote;
   applyCharacterTheme();
   $('quote-edit-input').value = quote.text ?? '';
+  renderQuoteEditTags(quote);
   showModal('quote-edit-modal');
   $('quote-edit-input').focus();
 }
@@ -437,13 +436,27 @@ async function deleteQuoteRow(quote) {
 }
 
 export function openExpressionModal() {
-  applyCharacterTheme();
+  const character = getExpressionCharacter();
+  state.expressionCharacterId = character.id;
+
+  const worldview = getActiveWorldview();
+  $('expression-modal-title').textContent = worldview
+    ? `표정 목록 · ${worldview.name}`
+    : '표정 목록 · 전체';
+
+  for (const buttonId of ['expression-character-cole-btn', 'expression-character-ellie-btn']) {
+    const button = $(buttonId);
+    button.classList.toggle('is-active', button.dataset.characterId === character.id);
+  }
+
+  $('expression-modal').setAttribute('data-character', character.id);
+  $('expression-edit-modal').setAttribute('data-character', character.id);
   renderExpressionList();
   showModal('expression-modal');
 }
 
 function renderExpressionList() {
-  const character = getActiveCharacter();
+  const character = getExpressionCharacter();
   if (!character) return;
 
   const list = $('expression-list');
@@ -502,7 +515,7 @@ function confirmTemporaryUrl(url) {
 }
 
 async function submitAddExpression() {
-  const character = getActiveCharacter();
+  const character = getExpressionCharacter();
   if (!character) return;
 
   const name = $('exp-name-input').value.trim();
@@ -534,14 +547,13 @@ async function submitAddExpression() {
 function openExpressionEditModal(expression) {
   state.editingExpressionId = expression.id;
   state.editingExpression = expression;
-  applyCharacterTheme();
   $('exp-edit-name-input').value = expression.name ?? '';
   $('exp-edit-url-input').value = expression.url ?? '';
   showModal('expression-edit-modal');
 }
 
 async function submitEditExpression() {
-  const character = getActiveCharacter();
+  const character = getExpressionCharacter();
   if (!character || !state.editingExpressionId) return;
 
   const name = $('exp-edit-name-input').value.trim();
@@ -571,7 +583,7 @@ async function submitEditExpression() {
 }
 
 async function deleteExpressionRow(expression) {
-  const character = getActiveCharacter();
+  const character = getExpressionCharacter();
   if (!character || !confirm(`'${expression.name}' 표정을 삭제하시겠습니까?`)) return;
 
   await runBusy(async () => {
@@ -592,6 +604,12 @@ async function saveQuotePatch(quoteId, patch) {
     const row = await character.updateQuote(quoteId, patch);
     upsertLocalQuote(row);
     renderQuoteList();
+
+    // 대사 수정 모달을 열어둔 채 태그를 바꿨다면 그 안의 표시도 맞춥니다.
+    if (state.editingQuoteId === quoteId) {
+      state.editingQuote = row;
+      renderQuoteEditTags(row);
+    }
   }, '대사 설정을 저장하지 못했습니다.');
 }
 

@@ -117,10 +117,7 @@
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-header">
         <span id="modal-title">≡</span>
-        <div class="modal-header-btns">
-          <button id="expression-manage-btn" class="header-action-btn" type="button">표정</button>
-          <button id="modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
-        </div>
+        <button id="modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
       </div>
       <ul id="modal-quote-list" class="modal-body"></ul>
     </div>
@@ -150,6 +147,20 @@
       </div>
       <div class="modal-input-box">
         <input type="text" id="quote-edit-input" placeholder="수정할 대사를 입력하세요" autocomplete="off">
+        <div class="quote-edit-tags">
+          <span class="quote-edit-tag">
+            <span class="quote-edit-tag-label">아이템:</span>
+            <button id="quote-edit-item-btn" class="quote-tag-btn default-tag" type="button">기본</button>
+          </span>
+          <span class="quote-edit-tag">
+            <span class="quote-edit-tag-label">표정:</span>
+            <button id="quote-edit-expression-btn" class="quote-tag-btn default-tag" type="button">기본</button>
+          </span>
+          <span class="quote-edit-tag" id="quote-edit-worldview-wrap">
+            <span class="quote-edit-tag-label">세계관:</span>
+            <button id="quote-edit-worldview-btn" class="quote-tag-btn default-tag" type="button">미분류</button>
+          </span>
+        </div>
         <button id="quote-edit-submit-btn" type="button">수정</button>
       </div>
     </div>
@@ -159,7 +170,11 @@
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="expression-modal-title">
       <div class="modal-header">
         <span id="expression-modal-title">표정 목록 관리</span>
-        <button id="expression-modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+        <div class="modal-header-btns">
+          <button id="expression-character-cole-btn" class="character-tab-btn" type="button" data-character-id="shimeji-cole">콜</button>
+          <button id="expression-character-ellie-btn" class="character-tab-btn" type="button" data-character-id="shimeji-ellie">엘리</button>
+          <button id="expression-modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+        </div>
       </div>
       <div class="expression-input-box">
         <input type="text" id="exp-name-input" placeholder="표정 이름 (예: 웃음)" autocomplete="off">
@@ -232,7 +247,10 @@
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="worldview-list-modal-title">
       <div class="modal-header">
         <span id="worldview-list-modal-title">세계관 목록</span>
-        <button id="worldview-list-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+        <div class="modal-header-btns">
+          <button id="expression-manage-btn" class="header-action-btn" type="button">표정</button>
+          <button id="worldview-list-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+        </div>
       </div>
       <ul id="worldview-list" class="modal-body"></ul>
     </div>
@@ -254,23 +272,11 @@
   <div id="worldview-edit-modal" class="modal-overlay" aria-hidden="true">
     <div class="modal-card modal-card-edit" role="dialog" aria-modal="true" aria-labelledby="worldview-edit-modal-title">
       <div class="modal-header">
-        <span id="worldview-edit-modal-title">세계관 이름 수정</span>
+        <span id="worldview-edit-modal-title">세계관 수정</span>
         <button id="worldview-edit-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
       </div>
       <div class="modal-input-box">
         <input type="text" id="worldview-edit-input" placeholder="세계관 이름" autocomplete="off">
-        <button id="worldview-edit-submit-btn" type="button">수정</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="worldview-image-modal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-card modal-card-short" role="dialog" aria-modal="true" aria-labelledby="worldview-image-modal-title">
-      <div class="modal-header">
-        <span id="worldview-image-modal-title">세계관 기본 이미지</span>
-        <button id="worldview-image-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
-      </div>
-      <div class="modal-input-box">
         <label class="worldview-field">
           <span>콜 기본 이미지</span>
           <input type="url" id="worldview-image-cole-input" placeholder="비우면 원래 기본 이미지" autocomplete="off">
@@ -279,7 +285,7 @@
           <span>엘리 기본 이미지</span>
           <input type="url" id="worldview-image-ellie-input" placeholder="비우면 원래 기본 이미지" autocomplete="off">
         </label>
-        <button id="worldview-image-submit-btn" type="button">저장</button>
+        <button id="worldview-edit-submit-btn" type="button">수정</button>
       </div>
     </div>
   </div>

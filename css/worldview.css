@@ -6,9 +6,8 @@
  */
 
 /*
- * 바 너비를 69% -> 55%로 줄여 이름 박스의 좌우 길이를 0.8배로 만듭니다.
- * cqw는 이 바의 너비를 기준으로 하므로, 계수를 1.25배 보정해서
- * 글자와 여백의 실제 크기는 전과 같게 유지합니다.
+ * 한 화면에 캡슐 버튼 4칸이 보입니다.
+ * cqw는 이 바의 너비를 기준으로 합니다.
  */
 .worldview-bar {
   width: 55%;
@@ -36,7 +35,7 @@
   box-shadow: none;
   padding: 0;
   color: #3F5F80;
-  font-size: clamp(20px, 7.7cqw, 38px);
+  font-size: clamp(18px, 7cqw, 34px);
   font-weight: bold;
   line-height: 1;
   cursor: pointer;
@@ -74,26 +73,30 @@
   width: 100%;
 }
 
-/* 20% = 화면에 정확히 5칸. 넘치는 칸은 가로로 흘러넘쳐 스크롤됩니다. */
+/* 25% = 화면에 정확히 4칸. 넘치는 칸은 가로로 흘러넘쳐 스크롤됩니다. */
 .worldview-slot {
-  flex: 0 0 20%;
+  flex: 0 0 25%;
   min-width: 0;
-  padding: 0 clamp(1px, 0.56cqw, 5px);
+  padding: 0 clamp(1px, 0.7cqw, 6px);
 }
 
-/* 상하 길이는 기존의 2배입니다. */
+/*
+ * 캡슐형. 높이를 min-height가 아니라 height로 고정해서,
+ * 이름이 길어 두 줄이 되어도 바 높이가 변하지 않습니다.
+ * (바 높이가 변하면 아래 캐릭터 영역까지 밀립니다)
+ */
 .worldview-btn {
   width: 100%;
   min-width: 0;
-  min-height: clamp(26px, 9cqw, 52px);
-  padding: clamp(3px, 1.1cqw, 8px) clamp(2px, 0.8cqw, 6px);
-  border: 1px solid rgba(63, 95, 128, 0.28);
-  border-radius: clamp(4px, 1.4cqw, 10px);
-  background: rgba(255, 255, 255, 0.84);
-  color: #4d5f74;
-  font-size: clamp(7px, 2.5cqw, 14px);
-  font-weight: 600;
-  line-height: 1.25;
+  height: clamp(24px, 8.4cqw, 46px);
+  padding: clamp(2px, 0.8cqw, 6px) clamp(4px, 1.6cqw, 12px);
+  border: 1px solid rgba(63, 95, 128, 0.14);
+  border-radius: 999px;
+  background: rgba(240, 242, 245, 0.92);
+  color: #98a2b0;
+  font-size: clamp(9px, 3.4cqw, 19px);
+  font-weight: 700;
+  line-height: 1.2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,6 +121,7 @@
 
 .worldview-btn:hover:not(:disabled) {
   background: #ffffff;
+  color: #6b7888;
   transform: translateY(-1px);
 }
 
@@ -136,9 +140,9 @@
 
 /* 이름이 비어 있는 자리 = 비활성 */
 .worldview-btn.is-empty {
-  background: rgba(255, 255, 255, 0.45);
+  background: transparent;
   border-style: dashed;
-  border-color: rgba(63, 95, 128, 0.38);
+  border-color: rgba(63, 95, 128, 0.3);
   box-shadow: none;
   cursor: default;
 }
@@ -148,10 +152,7 @@
 .worldview-bar.is-unavailable .worldview-btn.is-empty { opacity: 0.55; }
 
 /* ---- 세계관 모달 ---- */
-#worldview-list-modal { z-index: 1007; }
-#worldview-add-modal { z-index: 1008; }
-#worldview-edit-modal { z-index: 1009; }
-#worldview-image-modal { z-index: 1009; }
+/* 겹침 순서는 css/modals.css 한 곳에서 관리합니다. */
 
 .worldview-row {
   display: flex;
@@ -224,13 +225,20 @@
 
 /* 세계관 모달은 캐릭터 색이 아니라 세계관 색(#3F5F80)을 씁니다. */
 #worldview-add-modal .modal-input-box button,
-#worldview-edit-modal .modal-input-box button,
-#worldview-image-modal .modal-input-box button {
+#worldview-edit-modal .modal-input-box button {
   background: #3F5F80;
 }
 
 #worldview-add-modal .modal-input-box input:focus,
-#worldview-edit-modal .modal-input-box input:focus,
-#worldview-image-modal .modal-input-box input:focus {
+#worldview-edit-modal .modal-input-box input:focus {
   border-color: #3F5F80;
+}
+
+/* 세계관 목록의 '표정' 버튼은 캐릭터 색이 아니라 세계관 색을 씁니다. */
+#worldview-list-modal .header-action-btn {
+  background: #3F5F80;
+}
+
+#worldview-list-modal .header-action-btn:hover {
+  background: #33506B;
 }
