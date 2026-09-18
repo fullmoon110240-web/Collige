@@ -257,17 +257,50 @@
   border: none;
   box-shadow: none;
   padding: 0;
-  cursor: pointer;
+  cursor: grab;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, opacity 0.15s ease;
   flex: 0 0 auto;
+  /*
+   * 터치에서 브라우저가 스크롤/확대 제스처로 가로채지 않도록 합니다.
+   * 이게 없으면 손가락을 움직이는 순간 pointercancel이 나서 끌기가 끊깁니다.
+   */
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.item-btn:hover { transform: scale(1.22); }
+.item-btn.is-dragging { opacity: 0.35; }
+
+.item-btn img {
+  -webkit-user-drag: none;
+}
+
+/* 끌 때 손가락/커서를 따라다니는 이미지 */
+.item-drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2000;
+  opacity: 0.92;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35));
+  will-change: transform;
+}
+
+@media (hover: hover) {
+  .item-btn:hover { transform: scale(1.22); }
+}
 .item-btn:focus-visible { transform: scale(1.22); outline: none; }
 .item-btn:active { cursor: grabbing; }
+
+.character-side-card.drag-over .shimeji-avatar img {
+  filter: drop-shadow(0px 4px 10px rgba(63, 95, 128, 0.45));
+}
 
 .item-btn img {
   display: block;
