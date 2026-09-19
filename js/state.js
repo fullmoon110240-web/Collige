@@ -18,6 +18,9 @@ export const state = {
   draftQuote: null,
   // 대사 목록 정렬: 'oldest' | 'newest' | 'name'
   quoteSort: readStoredSort(),
+  // 대사 목록 거르기. '' = 전체, '__none__' = 지정 안 된 것, 그 외 = 해당 id
+  quoteItemFilter: '',
+  quoteExpressionFilter: '',
   editingExpression: null,
   editingWorldviewId: null,
   idleTimer: null,

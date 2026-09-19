@@ -52,8 +52,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
+
 
 .modal-header-btns {
   display: flex;
@@ -433,18 +434,49 @@
 #expression-character-ellie-btn.is-active { color: #3E6B75; }
 
 /* 대사 목록 헤더의 정렬 선택 */
+/*
+ * 제목 아래 한 줄을 차지하는 거르기 / 정렬 상자.
+ * 세 칸이 남는 폭을 고르게 나눠 가집니다.
+ */
+.quote-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
 .quote-sort-select {
+  flex: 1 1 0;
+  min-width: 0;
   border: 1px solid #d5dbe3;
   border-radius: 5px;
   background: #ffffff;
   color: #5c6b7f;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
-  padding: 3px 6px;
+  padding: 5px 7px;
   cursor: pointer;
   outline: none;
 }
 
+.quote-sort-select:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 전체가 아닌 값을 고르면 켜져 있다는 게 보이도록 */
+.quote-sort-select.is-filtered {
+  border-color: #3f548a;
+  background: #eef2fb;
+  color: #3f548a;
+}
+
 .quote-sort-select:focus { border-color: #3f548a; }
+
+[data-character="shimeji-ellie"] .quote-sort-select.is-filtered {
+  border-color: #3E6B75;
+  background: #e7f0f2;
+  color: #3E6B75;
+}
 
 [data-character="shimeji-ellie"] .quote-sort-select:focus { border-color: #3E6B75; }

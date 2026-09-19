@@ -50,6 +50,106 @@ function findDuplicateQuote(characterId, text, worldviewId, exceptId = null) {
   ) ?? null;
 }
 
+/*
+ * 대사 목록 거르기.
+ *
+ * '' 는 전체, '__none__' 은 아이템이나 표정을 지정하지 않은 대사를 뜻합니다.
+ * 그 외의 값은 아이템 키 또는 표정 id 입니다.
+ */
+const FILTER_ALL = '';
+const FILTER_NONE = '__none__';
+
+function matchesFilters(quote) {
+  const item = state.quoteItemFilter;
+  if (item !== FILTER_ALL) {
+    const value = String(quote.item_id ?? '');
+    if (item === FILTER_NONE ? value !== '' : value !== item) return false;
+  }
+
+  /*
+   * 표정은 id가 아니라 '이름'으로 거릅니다.
+   * 표정은 세계관마다 따로 있으므로 '미소'가 IF에도 크그에도 존재합니다.
+   * 세계관을 전부 해제했을 때 '미소'를 고르면 모든 세계관의 미소가 함께
+   * 나오도록, 같은 이름을 한 묶음으로 봅니다.
+   */
+  const expression = state.quoteExpressionFilter;
+  if (expression !== FILTER_ALL) {
+    const name = getExpressionById(quote.expression_id)?.name ?? '';
+    if (expression === FILTER_NONE ? name !== '' : name !== expression) return false;
+  }
+
+  return true;
+}
+
+function hasActiveFilter() {
+  return state.quoteItemFilter !== FILTER_ALL || state.quoteExpressionFilter !== FILTER_ALL;
+}
+
+/*
+ * 거르기 목록은 "지금 이 세계관의 대사에 실제로 쓰인 것"만 담습니다.
+ * 고르자마자 빈 목록이 나오는 선택지를 없애기 위해서입니다.
+ * 세계관을 바꿔 선택지가 사라지면 전체로 되돌립니다.
+ */
+function populateQuoteFilters(quotes) {
+  const itemIds = new Set();
+  const expressionIds = new Set();
+  let hasBareItem = false;
+  let hasBareExpression = false;
+
+  for (const quote of quotes) {
+    const itemId = String(quote.item_id ?? '');
+    if (itemId && ITEM_DATA[itemId]) itemIds.add(itemId);
+    else hasBareItem = true;
+
+    const expressionId = String(quote.expression_id ?? '');
+    if (expressionId && getExpressionById(expressionId)) expressionIds.add(expressionId);
+    else hasBareExpression = true;
+  }
+
+  const itemOptions = [{ value: FILTER_ALL, label: '아이템 전체' }];
+  if (hasBareItem) itemOptions.push({ value: FILTER_NONE, label: '아이템 없음' });
+  for (const [itemId, item] of Object.entries(ITEM_DATA)) {
+    if (itemIds.has(itemId)) itemOptions.push({ value: itemId, label: item.name });
+  }
+
+  /*
+   * 이름이 같은 표정은 한 항목으로 묶습니다.
+   * 목록에 나오는 순서는 그 이름이 처음 등장한 표정의 등록 순서를 따릅니다.
+   */
+  const expressionNames = [];
+  for (const expression of getVisibleExpressions(state.activeCharacterId)) {
+    if (!expressionIds.has(String(expression.id))) continue;
+    if (!expressionNames.includes(expression.name)) expressionNames.push(expression.name);
+  }
+
+  const expressionOptions = [{ value: FILTER_ALL, label: '표정 전체' }];
+  if (hasBareExpression) expressionOptions.push({ value: FILTER_NONE, label: '표정 없음' });
+  for (const name of expressionNames) {
+    expressionOptions.push({ value: name, label: name });
+  }
+
+  state.quoteItemFilter = fillSelect($('quote-item-filter'), itemOptions, state.quoteItemFilter);
+  state.quoteExpressionFilter =
+    fillSelect($('quote-expression-filter'), expressionOptions, state.quoteExpressionFilter);
+}
+
+// 고른 값이 남아 있으면 유지하고, 사라졌으면 전체로 되돌린 뒤 그 값을 돌려줍니다.
+function fillSelect(select, options, current) {
+  const value = options.some(option => option.value === current) ? current : FILTER_ALL;
+
+  select.replaceChildren(...options.map(option => {
+    const element = document.createElement('option');
+    element.value = option.value;
+    element.textContent = option.label;
+    return element;
+  }));
+
+  select.value = value;
+  select.classList.toggle('is-filtered', value !== FILTER_ALL);
+  select.disabled = options.length <= 1;
+  return value;
+}
+
 function sortQuotes(quotes) {
   const rows = [...quotes];
   if (state.quoteSort === 'newest') return rows.reverse();
@@ -113,6 +213,16 @@ export function initializeModals() {
     } catch {
       // 저장에 실패해도 이번 세션 동작에는 영향이 없습니다.
     }
+    renderQuoteList();
+  });
+
+  $('quote-item-filter').addEventListener('change', event => {
+    state.quoteItemFilter = event.target.value;
+    renderQuoteList();
+  });
+
+  $('quote-expression-filter').addEventListener('change', event => {
+    state.quoteExpressionFilter = event.target.value;
     renderQuoteList();
   });
 
@@ -217,6 +327,12 @@ export function openQuoteModal(character) {
   state.activeCharacterId = character.id;
   applyCharacterTheme();
   $('modal-title').textContent = `${character.name} 대사 목록`;
+
+  // 전체가 기본 상태입니다. 지난번에 걸어둔 조건 때문에
+  // 목록이 비어 보이는 일이 없도록 열 때마다 되돌립니다.
+  state.quoteItemFilter = FILTER_ALL;
+  state.quoteExpressionFilter = FILTER_ALL;
+
   renderQuoteList();
   showModal('quote-modal');
 }
@@ -227,15 +343,27 @@ export function renderQuoteList() {
 
   const list = $('modal-quote-list');
   list.replaceChildren();
-  const quotes = sortQuotes(getVisibleQuotes(character.id));
+
+  // 선택지는 거르기 전 목록에서 뽑습니다.
+  // 아이템을 고른다고 표정 선택지가 줄어들면 헷갈리기 때문입니다.
+  const visible = getVisibleQuotes(character.id);
+  populateQuoteFilters(visible);
+
+  const quotes = sortQuotes(visible.filter(matchesFilters));
 
   if (quotes.length === 0) {
     const worldview = getActiveWorldview();
     const empty = document.createElement('li');
     empty.className = 'empty-state';
-    empty.textContent = worldview
-      ? `'${worldview.name}' 세계관에 등록된 대사가 없습니다.`
-      : '등록된 대사가 없습니다.';
+
+    if (hasActiveFilter()) {
+      empty.textContent = '고른 조건에 맞는 대사가 없습니다.';
+    } else {
+      empty.textContent = worldview
+        ? `'${worldview.name}' 세계관에 등록된 대사가 없습니다.`
+        : '등록된 대사가 없습니다.';
+    }
+
     list.appendChild(empty);
     return;
   }

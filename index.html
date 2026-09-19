@@ -117,14 +117,16 @@
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-header">
         <span id="modal-title">≡</span>
-        <div class="modal-header-btns">
-          <select id="quote-sort-select" class="quote-sort-select" aria-label="정렬 순서">
-            <option value="oldest">오래된순</option>
-            <option value="newest">가까운순</option>
-            <option value="name">가나다순</option>
-          </select>
-          <button id="modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
-        </div>
+        <button id="modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+      <div class="quote-toolbar">
+        <select id="quote-item-filter" class="quote-sort-select" aria-label="아이템으로 거르기"></select>
+        <select id="quote-expression-filter" class="quote-sort-select" aria-label="표정으로 거르기"></select>
+        <select id="quote-sort-select" class="quote-sort-select" aria-label="정렬 순서">
+          <option value="oldest">오래된순</option>
+          <option value="newest">가까운순</option>
+          <option value="name">가나다순</option>
+        </select>
       </div>
       <ul id="modal-quote-list" class="modal-body"></ul>
     </div>
