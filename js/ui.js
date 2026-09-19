@@ -40,6 +40,39 @@ export function isHttpUrl(value) {
   return /^https?:\/\/\S+$/i.test(String(value ?? '').trim());
 }
 
+/*
+ * 마침표로 치는 글자들. 온점, 말줄임표, 전각 온점, 한중일 구두점.
+ * '...미안.' 과 '미안.' 을 같은 문장으로 보기 위해 전부 지웁니다.
+ */
+const PERIOD_LIKE = /[.．。…⋯]/gu;
+const WHITESPACE = /[\s\u200b]/gu;
+
+/**
+ * 대사 중복 판단용 정규화.
+ * 띄어쓰기와 마침표만 지우고, 나머지 문장부호는 그대로 둡니다.
+ *   '...미안.'  ->  '미안'
+ *   '미안.'     ->  '미안'   (위와 같은 대사)
+ *   '미안!'     ->  '미안!'  (다른 대사)
+ *   '미안?'     ->  '미안?'  (또 다른 대사)
+ */
+export function quoteDuplicateKey(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(PERIOD_LIKE, '')
+    .replace(WHITESPACE, '');
+}
+
+/**
+ * 가나다순 정렬용 키.
+ * 이쪽은 문장부호를 전부 털어내고 글자와 숫자만 남깁니다.
+ * 그래야 '...미안.' 이 마침표가 아니라 'ㅁ' 자리에 놓입니다.
+ */
+export function quoteSortKey(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, '');
+}
+
 const DRIVE_FILE_ID = /(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{20,})/;
 
 /**

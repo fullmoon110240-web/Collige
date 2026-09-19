@@ -139,12 +139,12 @@ export async function fetchAllData() {
   };
 }
 
-export async function createQuote({ characterId, text, itemId = '', worldviewId = null }) {
+export async function createQuote({ characterId, text, itemId = '', expressionId = null, worldviewId = null }) {
   const payload = {
     character_id: characterId,
     text,
     item_id: itemId,
-    expression_id: null
+    expression_id: expressionId
   };
   if (worldviewSupported) payload.worldview_id = worldviewId;
 

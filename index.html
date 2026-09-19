@@ -117,7 +117,14 @@
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-header">
         <span id="modal-title">≡</span>
-        <button id="modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+        <div class="modal-header-btns">
+          <select id="quote-sort-select" class="quote-sort-select" aria-label="정렬 순서">
+            <option value="oldest">오래된순</option>
+            <option value="newest">가까운순</option>
+            <option value="name">가나다순</option>
+          </select>
+          <button id="modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
+        </div>
       </div>
       <ul id="modal-quote-list" class="modal-body"></ul>
     </div>
@@ -127,13 +134,24 @@
     <div class="modal-card modal-card-short" role="dialog" aria-modal="true" aria-labelledby="quote-add-modal-title">
       <div class="modal-header">
         <span id="quote-add-modal-title">대사 추가</span>
-        <div class="modal-header-btns">
-          <label class="checkbox-group"><input type="checkbox" id="quote-add-item-checkbox"> 아이템</label>
-          <button id="quote-add-modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
-        </div>
+        <button id="quote-add-modal-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
       </div>
       <div class="modal-input-box">
         <input type="text" id="quote-add-input" placeholder="추가할 대사를 입력하세요" autocomplete="off">
+        <div class="quote-edit-tags">
+          <span class="quote-edit-tag">
+            <span class="quote-edit-tag-label">아이템:</span>
+            <button id="quote-add-item-btn" class="quote-tag-btn default-tag" type="button">기본</button>
+          </span>
+          <span class="quote-edit-tag">
+            <span class="quote-edit-tag-label">표정:</span>
+            <button id="quote-add-expression-btn" class="quote-tag-btn default-tag" type="button">기본</button>
+          </span>
+          <span class="quote-edit-tag" id="quote-add-worldview-wrap">
+            <span class="quote-edit-tag-label">세계관:</span>
+            <button id="quote-add-worldview-btn" class="quote-tag-btn default-tag" type="button">미분류</button>
+          </span>
+        </div>
         <button id="quote-add-submit-btn" type="button">등록</button>
       </div>
     </div>

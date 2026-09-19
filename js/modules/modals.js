@@ -13,7 +13,7 @@ import {
   upsertLocalQuote
 } from '../state.js';
 import { createExpression, deleteExpression, updateExpression } from '../supabase.js';
-import { $, hideModal, isHttpUrl, isTemporaryDriveUrl, normalizeImageUrl, showModal, flashError } from '../ui.js';
+import { $, hideModal, isHttpUrl, isTemporaryDriveUrl, normalizeImageUrl, quoteDuplicateKey, quoteSortKey, showModal, flashError } from '../ui.js';
 import { getCharacter } from './characters.js';
 import { populateItemSelectList } from './items.js';
 import { isWorldviewAvailable } from './worldview.js';
@@ -27,6 +27,39 @@ const CHARACTER_THEMED_MODALS = [
   'item-select-modal',
   'worldview-select-modal'
 ];
+
+const SORT_STORAGE_KEY = 'colliji:quote-sort';
+
+/*
+ * 아이템 / 표정 / 세계관 선택창은 두 곳에서 열립니다.
+ *   - 이미 등록된 대사를 고칠 때  -> 고른 즉시 DB에 저장
+ *   - 아직 등록 전인 대사를 쓸 때 -> 등록 버튼을 누르기 전까지 초안에만 반영
+ * 지금 어느 쪽에서 열렸는지 여기에 기억해 둡니다.
+ */
+let selectTarget = null;
+
+// 대사 중복 판단은 같은 캐릭터, 같은 세계관 안에서만 합니다.
+// 크그의 '안녕'과 IF의 '안녕'은 서로 다른 대사이기 때문입니다.
+function findDuplicateQuote(characterId, text, worldviewId, exceptId = null) {
+  const target = quoteDuplicateKey(text);
+  if (!target) return null;
+  return getQuotes(characterId).find(row =>
+    row.id !== exceptId &&
+    sameWorldview(row.worldview_id, worldviewId) &&
+    quoteDuplicateKey(row.text) === target
+  ) ?? null;
+}
+
+function sortQuotes(quotes) {
+  const rows = [...quotes];
+  if (state.quoteSort === 'newest') return rows.reverse();
+  if (state.quoteSort === 'name') {
+    return rows.sort((a, b) =>
+      quoteSortKey(a.text).localeCompare(quoteSortKey(b.text), 'ko')
+    );
+  }
+  return rows;
+}
 
 // 표정 목록은 세계관 목록에서 열리므로, 어느 캐릭터의 표정인지 따로 기억합니다.
 function getExpressionCharacter() {
@@ -71,6 +104,18 @@ export function initializeModals() {
     });
   });
 
+  const sortSelect = $('quote-sort-select');
+  sortSelect.value = state.quoteSort;
+  sortSelect.addEventListener('change', event => {
+    state.quoteSort = event.target.value;
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, state.quoteSort);
+    } catch {
+      // 저장에 실패해도 이번 세션 동작에는 영향이 없습니다.
+    }
+    renderQuoteList();
+  });
+
   $('expression-manage-btn').addEventListener('click', () => openExpressionModal());
 
   for (const buttonId of ['expression-character-cole-btn', 'expression-character-ellie-btn']) {
@@ -80,14 +125,18 @@ export function initializeModals() {
     });
   }
 
+  $('quote-add-item-btn').addEventListener('click', () => openItemSelect({ kind: 'draft' }));
+  $('quote-add-expression-btn').addEventListener('click', () => openExpressionSelect({ kind: 'draft' }));
+  $('quote-add-worldview-btn').addEventListener('click', () => openWorldviewSelect({ kind: 'draft' }));
+
   $('quote-edit-item-btn').addEventListener('click', () => {
-    if (state.editingQuoteId) openItemSelectModalForQuote(state.editingQuoteId);
+    if (state.editingQuoteId) openItemSelect({ kind: 'quote', quoteId: state.editingQuoteId });
   });
   $('quote-edit-expression-btn').addEventListener('click', () => {
-    if (state.editingQuoteId) openExpressionSelectModal(state.editingQuoteId);
+    if (state.editingQuoteId) openExpressionSelect({ kind: 'quote', quoteId: state.editingQuoteId });
   });
   $('quote-edit-worldview-btn').addEventListener('click', () => {
-    if (state.editingQuoteId) openWorldviewSelectModal(state.editingQuoteId);
+    if (state.editingQuoteId) openWorldviewSelect({ kind: 'quote', quoteId: state.editingQuoteId });
   });
   $('quote-add-submit-btn').addEventListener('click', submitAddQuote);
   $('quote-edit-submit-btn').addEventListener('click', submitEditQuote);
@@ -116,62 +165,52 @@ function applyCharacterTheme() {
 
 export function openQuoteAddModal(character) {
   state.activeCharacterId = character.id;
-  state.pendingQuoteText = '';
   applyCharacterTheme();
+
+  // 아이템과 표정은 '기본', 세계관은 지금 고른 세계관이 기본값입니다.
+  state.draftQuote = {
+    character_id: character.id,
+    text: '',
+    item_id: '',
+    expression_id: null,
+    worldview_id: state.activeWorldviewId
+  };
+
   $('quote-add-modal-title').textContent = `${character.name} 대사 추가`;
   $('quote-add-input').value = '';
-  $('quote-add-item-checkbox').checked = false;
+  renderQuoteAddTags();
   showModal('quote-add-modal');
   $('quote-add-input').focus();
 }
 
 async function submitAddQuote() {
   const character = getActiveCharacter();
-  if (!character) return;
+  const draft = state.draftQuote;
+  if (!character || !draft) return;
 
-  const input = $('quote-add-input');
-  const text = input.value;
-
+  const text = $('quote-add-input').value;
   if (!text.trim()) return;
 
-  if ($('quote-add-item-checkbox').checked) {
-    state.pendingQuoteText = text;
-    hideModal('quote-add-modal');
-    openItemSelectForNewQuote();
+  const duplicate = findDuplicateQuote(character.id, text, draft.worldview_id);
+  if (duplicate) {
+    alert(`이미 같은 대사가 있습니다.\n\n"${duplicate.text}"`);
     return;
   }
 
   await runBusy(async () => {
-    await character.addQuote(text, '');
+    await character.addQuote(text, {
+      itemId: draft.item_id,
+      expressionId: draft.expression_id,
+      worldviewId: draft.worldview_id
+    });
+    state.draftQuote = null;
     hideModal('quote-add-modal');
     if (isModalOpen('quote-modal')) renderQuoteList();
   }, '대사를 저장하지 못했습니다.');
 }
 
-function openItemSelectForNewQuote() {
-  const list = $('item-select-list');
-  list.replaceChildren();
-
-  for (const [itemId, item] of Object.entries(ITEM_DATA)) {
-    const li = document.createElement('li');
-    li.className = 'expression-select-item';
-    li.textContent = item.name;
-    li.addEventListener('click', async () => {
-      const character = getActiveCharacter();
-      const text = state.pendingQuoteText;
-      state.pendingQuoteText = '';
-      hideModal('item-select-modal');
-      if (!character || !text.trim()) return;
-
-      await runBusy(async () => {
-        await character.addQuote(text, itemId);
-        if (isModalOpen('quote-modal')) renderQuoteList();
-      }, '아이템 상호작용 대사를 저장하지 못했습니다.');
-    });
-    list.appendChild(li);
-  }
-
-  showModal('item-select-modal');
+function renderQuoteAddTags() {
+  if (state.draftQuote) renderTagRow('quote-add', state.draftQuote);
 }
 
 export function openQuoteModal(character) {
@@ -188,7 +227,7 @@ export function renderQuoteList() {
 
   const list = $('modal-quote-list');
   list.replaceChildren();
-  const quotes = getVisibleQuotes(character.id);
+  const quotes = sortQuotes(getVisibleQuotes(character.id));
 
   if (quotes.length === 0) {
     const worldview = getActiveWorldview();
@@ -232,23 +271,34 @@ export function renderQuoteList() {
 }
 
 // 아이템 / 표정 / 세계관은 대사 수정 모달 안에서 바꿉니다.
-function renderQuoteEditTags(quote) {
+/*
+ * 아이템 / 표정 / 세계관 태그 줄.
+ * 대사 추가창과 대사 수정창이 같은 모양을 쓰므로 한 함수로 그립니다.
+ * prefix는 'quote-add' 또는 'quote-edit' 입니다.
+ */
+function renderTagRow(prefix, quote) {
   const themeClass = quote.character_id === 'shimeji-cole' ? 'cole-tag' : 'ellie-tag';
 
-  applyTagButton($('quote-edit-item-btn'), ITEM_DATA[quote.item_id]?.name, themeClass, '기본');
+  applyTagButton($(`${prefix}-item-btn`), ITEM_DATA[quote.item_id]?.name, themeClass, '기본');
 
   const expression = getExpressionById(quote.expression_id);
-  applyTagButton($('quote-edit-expression-btn'), expression?.name, themeClass, '기본');
+  const expressionButton = $(`${prefix}-expression-btn`);
+  applyTagButton(expressionButton, expression?.name, themeClass, '기본');
+
   const mismatched = Boolean(expression) && !sameWorldview(expression.worldview_id, quote.worldview_id);
-  $('quote-edit-expression-btn').classList.toggle('is-mismatched', mismatched);
+  expressionButton.classList.toggle('is-mismatched', mismatched);
   if (mismatched) {
     const other = state.worldviews.find(row => sameWorldview(row.id, expression.worldview_id));
-    $('quote-edit-expression-btn').title = `'${other?.name ?? '미분류'}' 세계관의 표정입니다.`;
+    expressionButton.title = `'${other?.name ?? '미분류'}' 세계관의 표정입니다.`;
   }
 
   const worldview = state.worldviews.find(row => sameWorldview(row.id, quote.worldview_id));
-  applyTagButton($('quote-edit-worldview-btn'), worldview?.name, themeClass, '미분류');
-  $('quote-edit-worldview-wrap').hidden = !isWorldviewAvailable();
+  applyTagButton($(`${prefix}-worldview-btn`), worldview?.name, themeClass, '미분류');
+  $(`${prefix}-worldview-wrap`).hidden = !isWorldviewAvailable();
+}
+
+function renderQuoteEditTags(quote) {
+  renderTagRow('quote-edit', quote);
 }
 
 function applyTagButton(button, value, theme, fallback) {
@@ -258,30 +308,53 @@ function applyTagButton(button, value, theme, fallback) {
   button.title = hasValue ? value : fallback;
 }
 
-export function openItemSelectModalForQuote(quoteId) {
+/* ------------------------------------------------------------------ */
+/* 아이템 / 표정 / 세계관 선택창                                        */
+/* ------------------------------------------------------------------ */
+
+// 선택창이 지금 어떤 대사를 대상으로 열렸는지 돌려줍니다.
+function getSelectSubject() {
+  if (!selectTarget) return null;
+  if (selectTarget.kind === 'draft') return state.draftQuote;
   const character = getActiveCharacter();
-  if (!character) return;
+  if (!character) return null;
+  return getQuotes(character.id).find(row => row.id === selectTarget.quoteId) ?? null;
+}
+
+// 고른 값을 반영합니다. 초안이면 메모리에만, 등록된 대사면 DB까지.
+async function applySelectPatch(patch) {
+  if (!selectTarget) return;
+
+  if (selectTarget.kind === 'draft') {
+    Object.assign(state.draftQuote, patch);
+    renderQuoteAddTags();
+    return;
+  }
+
+  await saveQuotePatch(selectTarget.quoteId, patch);
+}
+
+export function openItemSelect(target) {
+  selectTarget = target;
+  if (!getSelectSubject()) return;
+
   populateItemSelectList(async itemId => {
     hideModal('item-select-modal');
-    await saveQuotePatch(quoteId, { item_id: itemId });
+    await applySelectPatch({ item_id: itemId });
   });
   showModal('item-select-modal');
 }
 
 /**
- * 대사에 붙일 표정을 고릅니다.
- *
- * 중요: 지금 선택된 세계관이 아니라 "그 대사가 속한 세계관"의 표정만 보여줍니다.
- * 세계관을 전부 해제한 상태에서는 모든 세계관의 표정이 섞여 보이는데,
+ * 지금 선택된 세계관이 아니라 "그 대사가 속한 세계관"의 표정만 보여줍니다.
  * 이름이 같은 표정이 여러 세계관에 있으면 목록에서 구분할 수가 없어
- * 엉뚱한 세계관의 표정을 붙이게 됩니다.
+ * 엉뚱한 세계관의 표정을 붙이게 되기 때문입니다.
  */
-export function openExpressionSelectModal(quoteId) {
+export function openExpressionSelect(target) {
+  selectTarget = target;
+  const quote = getSelectSubject();
   const character = getActiveCharacter();
-  if (!character) return;
-
-  const quote = getQuotes(character.id).find(row => row.id === quoteId);
-  if (!quote) return;
+  if (!quote || !character) return;
 
   const quoteWorldview = state.worldviews.find(row => sameWorldview(row.id, quote.worldview_id));
   $('expression-select-title').textContent = quoteWorldview
@@ -296,7 +369,7 @@ export function openExpressionSelectModal(quoteId) {
   defaultLi.textContent = '[기본] (이미지 없음)';
   defaultLi.addEventListener('click', async () => {
     hideModal('expression-select-modal');
-    await saveQuotePatch(quoteId, { expression_id: null });
+    await applySelectPatch({ expression_id: null });
   });
   list.appendChild(defaultLi);
 
@@ -320,7 +393,7 @@ export function openExpressionSelectModal(quoteId) {
     li.textContent = `[${expression.name}]`;
     li.addEventListener('click', async () => {
       hideModal('expression-select-modal');
-      await saveQuotePatch(quoteId, { expression_id: expression.id });
+      await applySelectPatch({ expression_id: expression.id });
     });
     list.appendChild(li);
   }
@@ -328,16 +401,9 @@ export function openExpressionSelectModal(quoteId) {
   showModal('expression-select-modal');
 }
 
-/**
- * 이미 등록된 대사의 세계관을 바꿉니다.
- * 표정은 세계관별로 따로 관리되므로, 옮긴 세계관에 같은 이름의 표정이 있으면
- * 그쪽으로 다시 연결하고, 없으면 물어본 뒤 표정을 해제합니다.
- */
-export function openWorldviewSelectModal(quoteId) {
-  const character = getActiveCharacter();
-  if (!character) return;
-
-  const quote = getQuotes(character.id).find(row => row.id === quoteId);
+export function openWorldviewSelect(target) {
+  selectTarget = target;
+  const quote = getSelectSubject();
   if (!quote) return;
 
   const list = $('worldview-select-list');
@@ -368,9 +434,21 @@ export function openWorldviewSelectModal(quoteId) {
   showModal('worldview-select-modal');
 }
 
+/*
+ * 세계관을 옮길 때 표정도 같이 챙깁니다.
+ * 표정은 세계관별로 따로 관리되므로, 옮긴 세계관에 같은 이름의 표정이 있으면
+ * 그쪽으로 다시 연결하고, 없으면 물어본 뒤 표정을 해제합니다.
+ */
 async function chooseWorldview(quote, worldviewId) {
   if (sameWorldview(quote.worldview_id, worldviewId)) {
     hideModal('worldview-select-modal');
+    return;
+  }
+
+  // 옮긴 세계관에 같은 대사가 이미 있으면 막습니다.
+  const duplicate = findDuplicateQuote(quote.character_id, quote.text, worldviewId, quote.id);
+  if (duplicate) {
+    alert(`옮기려는 세계관에 이미 같은 대사가 있습니다.\n\n"${duplicate.text}"`);
     return;
   }
 
@@ -394,7 +472,7 @@ async function chooseWorldview(quote, worldviewId) {
   }
 
   hideModal('worldview-select-modal');
-  await saveQuotePatch(quote.id, patch);
+  await applySelectPatch(patch);
 }
 
 export function openQuoteEditModal(quote) {
@@ -415,6 +493,12 @@ async function submitEditQuote() {
   // 입력한 문장을 trim하여 재작성하지 않는다. 빈 문자열 여부만 별도로 검사한다.
   const newText = $('quote-edit-input').value;
   if (!newText.trim()) return;
+
+  const duplicate = findDuplicateQuote(character.id, newText, state.editingQuote?.worldview_id, id);
+  if (duplicate) {
+    alert(`이미 같은 대사가 있습니다.\n\n"${duplicate.text}"`);
+    return;
+  }
 
   await runBusy(async () => {
     await character.updateQuote(id, { text: newText });

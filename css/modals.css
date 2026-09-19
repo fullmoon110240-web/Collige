@@ -431,3 +431,20 @@
 
 #expression-character-cole-btn.is-active { color: #3f548a; }
 #expression-character-ellie-btn.is-active { color: #3E6B75; }
+
+/* 대사 목록 헤더의 정렬 선택 */
+.quote-sort-select {
+  border: 1px solid #d5dbe3;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #5c6b7f;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.quote-sort-select:focus { border-color: #3f548a; }
+
+[data-character="shimeji-ellie"] .quote-sort-select:focus { border-color: #3E6B75; }

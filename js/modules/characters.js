@@ -14,6 +14,13 @@ import { $ } from '../ui.js';
 
 export const characters = new Map();
 
+// 말풍선이 떠 있는 시간. 예전 4초에서 두 배로 늘렸습니다.
+const BUBBLE_DURATION = 8000;
+
+// 콜과 엘리 말풍선이 겹칠 때 나중에 말한 쪽이 위로 오도록,
+// 말할 때마다 z-index를 하나씩 올려서 붙입니다.
+let bubbleStackOrder = 10;
+
 export class ShimejiCharacter {
   constructor(config) {
     this.config = config;
@@ -109,12 +116,13 @@ export class ShimejiCharacter {
     this.image.src = this.defaultImage;
   }
 
-  async addQuote(text, itemId = '') {
+  async addQuote(text, options = {}) {
     const row = await createQuote({
       characterId: this.id,
       text,
-      itemId,
-      worldviewId: state.activeWorldviewId
+      itemId: options.itemId ?? '',
+      expressionId: options.expressionId ?? null,
+      worldviewId: options.worldviewId ?? null
     });
     upsertLocalQuote(row);
     return row;
@@ -151,6 +159,7 @@ export class ShimejiCharacter {
   }
 
   displayQuote(quote) {
+    this.bubble.style.zIndex = String(++bubbleStackOrder);
     this.bubble.textContent = String(quote.text ?? '');
     this.bubble.style.display = 'block';
     // 표정 URL은 expressions 테이블 한 곳에만 있습니다. 여기서 찾아 씁니다.
@@ -166,7 +175,7 @@ export class ShimejiCharacter {
     this.timer = setTimeout(() => {
       this.bubble.style.display = 'none';
       this.image.src = this.defaultImage;
-    }, 4000);
+    }, BUBBLE_DURATION);
   }
 }
 

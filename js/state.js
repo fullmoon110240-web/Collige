@@ -14,12 +14,24 @@ export const state = {
   editingQuoteId: null,
   editingExpressionId: null,
   editingQuote: null,
-  pendingQuoteText: '',
+  // 아직 등록하지 않은 대사의 아이템/표정/세계관 초안
+  draftQuote: null,
+  // 대사 목록 정렬: 'oldest' | 'newest' | 'name'
+  quoteSort: readStoredSort(),
   editingExpression: null,
   editingWorldviewId: null,
   idleTimer: null,
   busy: false
 };
+
+function readStoredSort() {
+  try {
+    const saved = localStorage.getItem('colliji:quote-sort');
+    return ['oldest', 'newest', 'name'].includes(saved) ? saved : 'oldest';
+  } catch {
+    return 'oldest';
+  }
+}
 
 export function setLoadedData({ quotes, expressions, worldviews, worldviewImages, worldviewSupported }) {
   // worldviewSupported가 false면 세계관 바는 안내 상태로 표시됩니다.
