@@ -11,7 +11,7 @@
  * │  (.github/workflows/deploy.yml 을 쓰면 자동으로 바뀝니다)     │
  * └─────────────────────────────────────────────────────────────┘
  */
-const VERSION = '2026-09-20-9';
+const VERSION = '2026-09-20-12';
 
 const CACHE = `collige-${VERSION}`;
 

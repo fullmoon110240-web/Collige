@@ -44,8 +44,17 @@ button {
    * One proportional stage controls the entire composition.
    * The stage keeps the same landscape ratio and scales as a whole.
    */
-  width: min(96vw, calc(96vh * 1.9), 960px);
-  aspect-ratio: 1.9 / 1;
+  /*
+   * 캐릭터 칸을 키우면서 전체가 세로로 길어졌습니다(가로:세로 = 1.9 -> 1.5).
+   *   aspect-ratio  - 무대 자체의 비율. 960px 일 때 내용 높이와 거의 같습니다.
+   *   96vh * 1.2    - 창이 납작할 때 무대를 줄여서 아래가 잘리지 않게 하는 한계
+   *
+   * 뒤 숫자가 더 작은 이유: 글자 크기 같은 것들은 clamp 로 최소값이 있어서,
+   * 화면이 작아질수록 내용이 상대적으로 세로로 길어집니다(1.34 -> 1.21).
+   * 잘리지 않으려면 가장 길어졌을 때의 비율을 써야 합니다.
+   */
+  width: min(96vw, calc(96vh * 1.2), 960px);
+  aspect-ratio: 1.34 / 1;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -58,12 +67,22 @@ button {
 .shimeji-section {
   width: 100%;
   display: grid;
-  grid-template-columns: 31% 38% 31%;
+  /*
+   * 가운데(말풍선) 칸을 크게 줄이고 양옆 캐릭터 칸을 키웠습니다.
+   * 칸이 넓어지면 아래 aspect-ratio 때문에 캐릭터 칸의 높이도 같이 커집니다.
+   */
+  grid-template-columns: 42% 16% 42%;
+  /*
+   * 세계관 바와 캐릭터 사이의 틈입니다.
+   * 바 쪽에 margin 으로 주면 cqw 가 창 너비 기준이라 무대와 따로 놀아서,
+   * 여기에 무대 너비의 % 로 둡니다. 안쪽 여백이라 캐릭터 칸 높이에는
+   * 끼어들지 않으므로 말풍선 위치(%)도 그대로입니다.
+   */
   column-gap: 0;
   align-items: end;
   position: relative;
   margin: 0;
-  padding: 0;
+  padding: 3.5% 0 0;
   background: transparent;
   box-shadow: none;
   container-type: inline-size;

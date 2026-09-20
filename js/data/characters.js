@@ -7,6 +7,6 @@ export const CHARACTER_DATA = Object.freeze({
   'shimeji-ellie': Object.freeze({
     id: 'shimeji-ellie', name: '엘리', imageId: 'img-ellie', bubbleId: 'bubble-ellie',
     otherBubbleId: 'bubble-cole', cardId: 'ellie-card', addButtonId: 'btn-ellie',
-    listButtonId: 'list-btn-ellie', color: '#3E6B75', defaultImage: "https://lh3.googleusercontent.com/d/1E910RHupHTGRTxMSWTE3I_mqF9Iqzs6X=w1000"
+    listButtonId: 'list-btn-ellie', color: '#3E6B75', defaultImage: "https://lh3.googleusercontent.com/d/1w5d66NsSWAFbU5qMkCtmm05CWm56xqkn=w1000"
   })
 });

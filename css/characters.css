@@ -8,7 +8,12 @@
   margin: 0;
   padding: 0;
   transition: transform 0.2s;
-  z-index: 1;
+  /*
+   * 여기에 z-index 를 두지 않습니다.
+   * 두면 카드가 '층'을 새로 만들어서, 안에 있는 캐릭터 그림을
+   * 카드 바깥(말풍선·단추)보다 아래로 내릴 수 없게 됩니다.
+   * 말풍선은 z-index: 2 라서 어차피 카드보다 위입니다.
+   */
 }
 
 /* Character cards touch the speech area directly. */
@@ -35,12 +40,26 @@
 #shimeji-cole,
 #shimeji-ellie {
   width: 100%;
-  aspect-ratio: 1084 / 909;
+  /*
+   * 칸의 세로 길이는 이 비율에서 나옵니다(세로 = 가로 / 1.05).
+   * 그림은 세로를 기준으로 맞추므로, 이 비율을 바꿔도 그림 비율은 깨지지 않습니다.
+   * 대신 칸이 세로로 길어지면 그림도 그만큼 커지고 옆으로도 넓어집니다.
+   */
+  aspect-ratio: 1.05 / 1;
   height: auto;
   flex: 0 0 auto;
+  /*
+   * 이게 없으면 세로로 긴 그림이 들어왔을 때 칸이 그림 크기만큼 늘어납니다.
+   * (세로로 늘어선 칸의 '최소 높이'가 기본값으로 '내용만큼' 이기 때문입니다.)
+   * 0 으로 눌러 둬야 위 aspect-ratio 가 정한 높이가 그대로 지켜집니다.
+   */
+  min-height: 0;
   padding: 3% 4% 1%;
-  /* 안쪽에서 무슨 일이 생겨도 바깥 레이아웃 계산에 끼어들지 않습니다. */
-  contain: layout;
+  /*
+   * contain: layout 을 쓰지 않습니다.
+   * 그림이 이 칸 밖으로 삐져나와야 하는데, contain 은 '층'을 새로 만들어서
+   * 아래 img 의 z-index: -1 이 이 칸 안에서만 통하게 만들어 버립니다.
+   */
 }
 
 .shimeji-avatar {
@@ -57,14 +76,29 @@
 .shimeji-avatar:hover { transform: scale(1.035); }
 .shimeji-avatar:focus-visible { transform: scale(1.035); }
 
+/*
+ * 캐릭터 그림은 '세로'를 기준으로 맞춥니다.
+ *
+ *   높이 = 칸 높이 (--avatar-zoom 으로 더 키울 수 있습니다)
+ *   너비 = 그림 원래 비율대로
+ *
+ * 그래서 가로가 칸보다 넓은 그림은 좌우로 그냥 삐져나옵니다. 자르지 않습니다.
+ * 대신 z-index: -1 로 가장 아래층에 깔아 둬서,
+ * 삐져나온 부분이 말풍선이나 ≡ + 단추를 가리지 않습니다.
+ */
 .shimeji-avatar img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: calc(100% * var(--avatar-zoom, 1));
+  max-width: none;
+  max-height: none;
+  flex: 0 0 auto;          /* 칸보다 넓어도 줄어들지 않게 */
   object-fit: contain;
   object-position: center bottom;
-  max-width: 100%;
-  max-height: 100%;
+  /* 캐릭터별로 위아래 위치를 미세하게 옮깁니다(아래 #shimeji-ellie 참고). */
+  transform: translateY(var(--avatar-drop, 0px));
+  position: relative;
+  z-index: -1;
   filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.15));
   pointer-events: none;
   /* 이미지가 깨졌을 때 alt 문구가 자리를 밀지 않도록 */
@@ -73,11 +107,24 @@
   overflow: hidden;
 }
 
+/*
+ * 엘리는 콜보다 1px 남짓 아래로 내려와 있습니다.
+ * cqw 는 캐릭터 줄 너비의 1% 라서, 창이 커지면 이 값도 같이 커집니다.
+ * (줄 너비가 960px 일 때 0.104cqw = 1px)
+ *
+ * 엘리를 콜보다 더 크게 하고 싶으면 여기에 --avatar-zoom: 1.08 처럼 적으세요.
+ */
+#shimeji-ellie {
+  --avatar-drop: 0.625cqw;   /* 화면 기준 6px */
+  --avatar-zoom: 1.1;        /* 콜보다 10% 큽니다 */
+}
+
 /* The center column is intentionally narrower than the two character columns. */
 .speech-bubble-container {
   grid-column: 2;
-  width: 80%; /* 👇 100%에서 줄임 */
-  margin-inline: auto; /* 👇 좌우 여백을 균등하게 배분하여 가운데 정렬 */
+  /* 칸 자체가 이미 좁으므로 그 안에서 또 줄이지 않습니다. */
+  width: 100%;
+  margin-inline: auto;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -100,8 +147,24 @@
 .speech-bubble-box {
   display: none;
   position: absolute;
-  width: 100%;
-  max-width: 100%;
+  /*
+   * 가운데 칸보다 넓습니다. 모자란 만큼은 캐릭터 쪽으로 넘어가는데,
+   * 캐릭터 그림이 가장 아래층(z-index: -1)이라 말풍선이 그 위에 얹힙니다.
+   *
+   * 가운데 칸의 비율이 아니라 무대 너비(cqw)를 기준으로 잡습니다.
+   * 그래야 가운데 칸을 더 좁혀도 말풍선 너비는 읽을 만한 채로 남습니다.
+   */
+  --bubble-width: clamp(140px, 25cqw, 250px);
+  width: var(--bubble-width);
+  max-width: none;
+  /*
+   * 둘 다 가운데 칸의 한가운데에 놓습니다.
+   * margin: auto 로는 안 됩니다. 말풍선이 칸보다 넓을 때
+   * 브라우저가 왼쪽에 붙여 버리기 때문입니다(남는 자리가 음수라서).
+   * transform 은 말풍선이 뜰 때의 애니메이션이 쓰고 있어서 못 씁니다.
+   */
+  left: 50%;
+  margin-left: calc(var(--bubble-width) / -2);
   height: auto !important;
   padding: clamp(12px, 2.2cqw, 20px) clamp(10px, 1.5cqw, 14px);
   border-radius: clamp(7px, 1.25cqw, 10px);
@@ -129,9 +192,12 @@
 }
 
 #bubble-cole {
-  top: 10cqw;
-  left: 0;
-  margin: 0;
+  /*
+   * 콜은 위, 엘리는 아래입니다.
+   * cqw(가로 기준)로 잡으면 캐릭터 칸 높이가 달라질 때 둘이 가운데로 몰립니다.
+   * 그래서 칸 높이의 비율(%)로 잡습니다.
+   */
+  top: 9%;
   --bubble-shadow-rgb: 40, 54, 92;
   color: #3f548a;
 }
@@ -164,9 +230,7 @@
 }
 
 #bubble-ellie {
-  right: 0;
-  bottom: 10cqw;
-  margin: 0;
+  bottom: 20%;
   --bubble-shadow-rgb: 34, 66, 73;
   color: #3E6B75;
 }
@@ -323,9 +387,13 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 72%;
-  max-width: 180px;
-  max-height: 60%;
+  /*
+   * 가운데 칸이 좁아져서, 칸 비율(72%)로 잡으면 글자가 세로로 길게 늘어져
+   * 아래가 잘렸습니다. 말풍선과 같은 방식으로 무대 너비를 기준으로 잡습니다.
+   */
+  width: clamp(140px, 25cqw, 250px);
+  max-width: none;
+  max-height: 88%;
   overflow: hidden;
   box-sizing: border-box;
   background: linear-gradient(135deg, #ffffff 30%, rgba(255, 255, 255, 0.5) 100%);
