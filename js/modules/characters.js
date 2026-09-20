@@ -21,7 +21,7 @@ const BUBBLE_DURATION = 8000;
 // 말할 때마다 z-index를 하나씩 올려서 붙입니다.
 let bubbleStackOrder = 10;
 
-export class ShimejiCharacter {
+class ShimejiCharacter {
   constructor(config) {
     this.config = config;
     this.element = $(config.id);
@@ -187,7 +187,7 @@ export function initializeCharacters() {
   document.addEventListener('colliji:worldview-change', refreshCharacterImages);
 }
 
-export function refreshCharacterImages() {
+function refreshCharacterImages() {
   for (const character of characters.values()) character.resetToDefault();
 }
 

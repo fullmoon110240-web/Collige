@@ -249,19 +249,6 @@
   font-weight: 600;
 }
 
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #555;
-  margin-top: 2px;
-}
-
-.checkbox-group input[type="checkbox"] {
-  cursor: pointer;
-}
-
 .expression-input-box {
   display: flex;
   flex-direction: column;

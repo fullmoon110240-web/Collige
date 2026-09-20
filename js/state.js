@@ -78,7 +78,7 @@ export function getExpressionById(expressionId) {
 /* ------------------------------------------------------------------ */
 
 // 선택된 세계관이 없으면 모든 세계관의 대사/표정이 섞여 나옵니다.
-export function matchesActiveWorldview(row) {
+function matchesActiveWorldview(row) {
   if (!state.activeWorldviewId) return true;
   return String(row.worldview_id ?? '') === state.activeWorldviewId;
 }
@@ -106,7 +106,7 @@ export function getActiveWorldview() {
   return state.worldviews.find(row => String(row.id) === state.activeWorldviewId) ?? null;
 }
 
-export function setWorldviews(rows) {
+function setWorldviews(rows) {
   state.worldviews = [...(rows ?? [])].sort(compareWorldview);
 }
 

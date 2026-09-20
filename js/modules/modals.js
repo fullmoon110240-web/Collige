@@ -273,7 +273,7 @@ function applyCharacterTheme() {
   }
 }
 
-export function openQuoteAddModal(character) {
+function openQuoteAddModal(character) {
   state.activeCharacterId = character.id;
   applyCharacterTheme();
 
@@ -323,7 +323,7 @@ function renderQuoteAddTags() {
   if (state.draftQuote) renderTagRow('quote-add', state.draftQuote);
 }
 
-export function openQuoteModal(character) {
+function openQuoteModal(character) {
   state.activeCharacterId = character.id;
   applyCharacterTheme();
   $('modal-title').textContent = `${character.name} 대사 목록`;
@@ -337,7 +337,7 @@ export function openQuoteModal(character) {
   showModal('quote-modal');
 }
 
-export function renderQuoteList() {
+function renderQuoteList() {
   const character = getActiveCharacter();
   if (!character) return;
 
@@ -462,7 +462,7 @@ async function applySelectPatch(patch) {
   await saveQuotePatch(selectTarget.quoteId, patch);
 }
 
-export function openItemSelect(target) {
+function openItemSelect(target) {
   selectTarget = target;
   if (!getSelectSubject()) return;
 
@@ -478,7 +478,7 @@ export function openItemSelect(target) {
  * 이름이 같은 표정이 여러 세계관에 있으면 목록에서 구분할 수가 없어
  * 엉뚱한 세계관의 표정을 붙이게 되기 때문입니다.
  */
-export function openExpressionSelect(target) {
+function openExpressionSelect(target) {
   selectTarget = target;
   const quote = getSelectSubject();
   const character = getActiveCharacter();
@@ -529,7 +529,7 @@ export function openExpressionSelect(target) {
   showModal('expression-select-modal');
 }
 
-export function openWorldviewSelect(target) {
+function openWorldviewSelect(target) {
   selectTarget = target;
   const quote = getSelectSubject();
   if (!quote) return;
@@ -603,7 +603,7 @@ async function chooseWorldview(quote, worldviewId) {
   await applySelectPatch(patch);
 }
 
-export function openQuoteEditModal(quote) {
+function openQuoteEditModal(quote) {
   state.editingQuoteId = quote.id;
   state.editingQuote = quote;
   applyCharacterTheme();
@@ -647,7 +647,7 @@ async function deleteQuoteRow(quote) {
   }, '대사를 삭제하지 못했습니다.');
 }
 
-export function openExpressionModal() {
+function openExpressionModal() {
   const character = getExpressionCharacter();
   state.expressionCharacterId = character.id;
 

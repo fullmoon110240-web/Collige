@@ -26,11 +26,6 @@ export function hideLoading() {
   if (overlay) overlay.classList.add('is-hidden');
 }
 
-export function showLoading() {
-  const overlay = document.getElementById('loading-overlay');
-  if (overlay) overlay.classList.remove('is-hidden');
-}
-
 export function flashError(message) {
   console.error(message);
   alert(message);
