@@ -82,7 +82,7 @@ button {
   align-items: end;
   position: relative;
   margin: 0;
-  padding: 3.5% 0 0;
+  padding: 3.5% 0 3%;
   background: transparent;
   box-shadow: none;
   container-type: inline-size;
