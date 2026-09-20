@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="./css/characters.css">
   <link rel="stylesheet" href="./css/modals.css">
   <link rel="stylesheet" href="./css/worldview.css">
+  <link rel="stylesheet" href="./css/cursor.css">
+  <link rel="stylesheet" href="./css/player.css">
 </head>
 <body>
   <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
@@ -53,6 +55,49 @@
       }, 10000);
     })();
   </script>
+
+  <!--
+    마우스를 따라오는 캐릭터.
+    적힌 순서대로 줄을 섭니다. 첫 번째가 커서를, 두 번째가 첫 번째를 따라갑니다.
+    그림 주소는 js/modules/cursor.js 의 TRAIL_IMAGES 에 있습니다.
+  -->
+  <img class="cursor-trail is-hidden" data-cursor-for="shimeji-cole" alt="" aria-hidden="true">
+  <img class="cursor-trail is-hidden" data-cursor-for="shimeji-ellie" alt="" aria-hidden="true">
+
+  <!--
+    오른쪽 위 음악 재생바.
+    노래 주소와 만든 사람은 js/modules/player.js 의 SONG 에 있습니다.
+    위치와 크기는 css/player.css 맨 위 네 값으로 조절합니다.
+  -->
+  <div class="music-player" id="music-player">
+    <div class="music-row">
+      <button class="music-btn music-play" id="music-play" type="button" aria-label="재생">
+        <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+      </button>
+
+      <div class="music-progress" id="music-progress" role="slider"
+           aria-label="재생 위치" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="music-fill" id="music-fill"></div>
+      </div>
+
+      <div class="music-volume">
+        <!-- 스피커 아래로 세워서 펼쳐집니다. 아래가 0%, 위가 100%. -->
+        <div class="music-volume-panel">
+          <input type="range" class="music-volume-slider" id="music-volume-slider"
+                 min="0" max="1" step="0.01" value="1"
+                 aria-label="음량" aria-orientation="vertical">
+        </div>
+
+        <button class="music-btn music-mute" id="music-mute" type="button" aria-label="음소거">
+          <svg class="icon-loud" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3v2a7 7 0 0 1 0 14v2a9 9 0 0 0 0-18z"/></svg>
+          <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm18.5-.5L20 7l-2.5 2.5L15 7l-1.5 1.5L16 11l-2.5 2.5L15 15l2.5-2.5L20 15l1.5-1.5L19 11z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="music-artist"></div>
+  </div>
 
   <main class="app-shell">
     <div class="layout-stage">

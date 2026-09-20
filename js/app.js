@@ -4,6 +4,8 @@ import { initializeCharacters, setupGlobalGuideTimer } from './modules/character
 import { initializeItems } from './modules/items.js';
 import { initializeModals } from './modules/modals.js';
 import { initializeWorldview, restoreWorldviewSelection } from './modules/worldview.js';
+import { initializeCursorTrail } from './modules/cursor.js';
+import { initializeMusicPlayer } from './modules/player.js';
 import { hideLoading, setLoadingMessage } from './ui.js';
 
 // supabase/optimize.sql을 실행하지 않은 채 새 코드를 올렸을 때를 알아봅니다.
@@ -39,6 +41,12 @@ async function boot() {
     initializeItems();
     initializeWorldview();
     setupGlobalGuideTimer();
+
+    // 마우스를 따라다니는 캐릭터. 그림은 modules/cursor.js 에 적혀 있습니다.
+    initializeCursorTrail();
+
+    // 오른쪽 위 음악 재생바. 노래 주소는 modules/player.js 에 있습니다.
+    initializeMusicPlayer();
   } catch (error) {
     console.error('화면 초기화 실패:', error);
     setLoadingMessage('화면을 준비하는 중 문제가 발생했습니다.');
