@@ -41,6 +41,9 @@ function updateProgress() {
 }
 
 function togglePlay() {
+  // 사람이 직접 정했으니, 자동 재생은 더 기다리지 않습니다.
+  stopWaitingForFirstTouch();
+
   if (audio.paused) {
     audio.play().catch(error => console.warn('[player] 재생하지 못했습니다:', error.message));
   } else {
@@ -79,12 +82,37 @@ function toggleMute() {
  * 그래서 첫 조작(마우스 움직임 · 클릭 · 키 입력) 때 한 번만 시도합니다.
  * 막히면 조용히 넘어가고, 재생 버튼을 누르면 그때 나옵니다.
  */
-function tryAutoplay() {
-  if (autoplayTried) return;
+const START_EVENTS = ['mousemove', 'pointerdown', 'keydown', 'touchstart'];
+
+function stopWaitingForFirstTouch() {
   autoplayTried = true;
+  for (const type of START_EVENTS) window.removeEventListener(type, tryAutoplay);
+}
+
+function tryAutoplay(event) {
+  if (autoplayTried) return;
+
+  /*
+   * 재생바를 직접 누른 것이면 여기서 틀지 않습니다.
+   *
+   * 누르면 pointerdown 이 먼저 오고 click 이 뒤따릅니다.
+   * 여기서 먼저 틀어 버리면, 이어지는 click 이 '이미 나오는 중'으로 보고
+   * 도로 멈춰서 첫 누름이 아무 일도 안 한 것처럼 보입니다.
+   */
+  if (event && root && root.contains(event.target)) return;
+
+  stopWaitingForFirstTouch();
   audio.play().catch(() => {
     console.info('[player] 자동 재생이 막혔습니다. 재생 버튼을 눌러 주세요.');
   });
+}
+
+/*
+ * 작은 창으로 띄울 때 원래 창의 노래를 멈춥니다.
+ * 두 창에서 같은 노래가 겹쳐 나오지 않게 하려는 것입니다.
+ */
+export function pauseMusic() {
+  try { audio.pause(); } catch (error) { /* 아직 준비 전이면 그냥 넘어갑니다 */ }
 }
 
 export function initializeMusicPlayer() {
@@ -115,7 +143,9 @@ export function initializeMusicPlayer() {
   progress.addEventListener('click', seek);
   volumeSlider.addEventListener('input', () => applyVolume(Number(volumeSlider.value)));
 
-  for (const type of ['mousemove', 'pointerdown', 'keydown', 'touchstart']) {
-    window.addEventListener(type, tryAutoplay, { once: true, passive: true });
+  // once 를 쓰지 않습니다. 재생바를 누른 경우엔 그냥 넘겨야 하는데,
+  // once 면 넘기든 말든 그 한 번으로 listener 가 사라집니다.
+  for (const type of START_EVENTS) {
+    window.addEventListener(type, tryAutoplay, { passive: true });
   }
 }

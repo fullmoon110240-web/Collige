@@ -1,5 +1,6 @@
 import { ITEM_DATA } from '../data/items.js';
 import { getCharacter } from './characters.js';
+import { playPop } from './sfx.js';
 import { showModal, $ } from '../ui.js';
 
 /*
@@ -94,6 +95,7 @@ function onPointerUp(event) {
 
   if (!target) return;
   const item = ITEM_DATA[itemId];
+  playPop();
   getCharacter(target.characterId)?.speakItemQuote(itemId, item?.name ?? itemId);
 }
 

@@ -5,12 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>콜리지 놀이</title>
+
+  <!-- 앱으로 설치하기 (홈 화면 · 작업 표시줄) -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#3f548a">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="콜리지">
+
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/characters.css">
   <link rel="stylesheet" href="./css/modals.css">
   <link rel="stylesheet" href="./css/worldview.css">
   <link rel="stylesheet" href="./css/cursor.css">
   <link rel="stylesheet" href="./css/player.css">
+  <link rel="stylesheet" href="./css/update.css">
+  <link rel="stylesheet" href="./css/ontop.css">
+  <link rel="stylesheet" href="./css/controls.css">
 </head>
 <body>
   <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
@@ -20,6 +33,14 @@
       <div id="loading-message" class="loading-message">잠시만 기다려 주세요</div>
     </div>
   </div>
+
+  <script>
+    // '항상 위에 띄운 작은 창' 안이면 표시를 미리 붙입니다.
+    // 그려지기 전에 붙여야 음악바가 한 번 깜빡였다 사라지지 않습니다.
+    if (new URLSearchParams(location.search).has('pip')) {
+      document.documentElement.classList.add('is-embedded');
+    }
+  </script>
 
   <script>
     // 모듈 로딩이 실패하면 boot()이 실행되지 않아 로딩창이 그대로 남습니다.
@@ -99,14 +120,36 @@
     <div class="music-artist"></div>
   </div>
 
+  <!--
+    왼쪽 위 단추들. 압정은 js/modules/ontop.js 가 이 칸 맨 앞에 끼워 넣습니다.
+    (크롬·엣지가 아니면 압정이 없어서, 그때는 효과음부터 시작합니다)
+  -->
+  <div class="top-controls" id="top-controls">
+    <button type="button" class="switch is-on" id="sfx-toggle" role="switch" aria-checked="true">
+      <span class="switch-label">효과음</span>
+      <span class="switch-track"><span class="switch-knob"></span></span>
+    </button>
+
+    <button type="button" class="switch" id="auto-toggle" role="switch" aria-checked="false"
+            title="켜면 누르지 않아도 캐릭터가 알아서 말합니다">
+      <span class="switch-label">AUTO</span>
+      <span class="switch-track"><span class="switch-knob"></span></span>
+    </button>
+  </div>
+
   <main class="app-shell">
     <div class="layout-stage">
+      <!-- 예전에는 ≡ 아이콘이었습니다. 글자 두 개만 남겼습니다. -->
+      <nav class="stage-links" aria-label="목록 열기">
+        <button id="worldview-list-btn" class="stage-link" type="button">세계관 목록</button>
+        <span class="stage-link-sep" aria-hidden="true">|</span>
+        <button id="expression-manage-btn" class="stage-link" type="button">표정 목록</button>
+      </nav>
+
       <section class="worldview-bar" id="worldview-bar" aria-label="세계관">
-        <button id="worldview-list-btn" class="worldview-icon-btn" type="button" title="세계관 목록" aria-label="세계관 목록">≡</button>
         <div class="worldview-viewport" id="worldview-viewport">
           <div class="worldview-track" id="worldview-track"></div>
         </div>
-        <button id="worldview-add-btn" class="worldview-icon-btn" type="button" title="세계관 추가" aria-label="세계관 추가">+</button>
       </section>
 
       <section class="shimeji-section" aria-label="캐릭터">
@@ -312,25 +355,15 @@
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="worldview-list-modal-title">
       <div class="modal-header">
         <span id="worldview-list-modal-title">세계관 목록</span>
-        <div class="modal-header-btns">
-          <button id="expression-manage-btn" class="header-action-btn" type="button">표정</button>
-          <button id="worldview-list-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
-        </div>
+        <button id="worldview-list-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
       </div>
-      <ul id="worldview-list" class="modal-body"></ul>
-    </div>
-  </div>
+      <!-- 세계관 추가. 예전에는 메인 바의 + 가 따로 창을 띄웠습니다. -->
+      <div class="worldview-add-row">
+        <input type="text" id="worldview-add-input" placeholder="추가할 세계관을 입력해주세요." autocomplete="off">
+        <button id="worldview-add-submit-btn" type="button">추가</button>
+      </div>
 
-  <div id="worldview-add-modal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-card modal-card-edit" role="dialog" aria-modal="true" aria-labelledby="worldview-add-modal-title">
-      <div class="modal-header">
-        <span id="worldview-add-modal-title">세계관 추가</span>
-        <button id="worldview-add-close-btn" class="modal-close-btn" type="button" aria-label="닫기">✕</button>
-      </div>
-      <div class="modal-input-box">
-        <input type="text" id="worldview-add-input" placeholder="추가할 세계관 이름을 입력하세요" autocomplete="off">
-        <button id="worldview-add-submit-btn" type="button">등록</button>
-      </div>
+      <ul id="worldview-list" class="modal-body"></ul>
     </div>
   </div>
 

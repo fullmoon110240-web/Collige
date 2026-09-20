@@ -11,6 +11,7 @@ import {
 } from '../state.js';
 import { createQuote, deleteQuote, updateQuote } from '../supabase.js';
 import { $ } from '../ui.js';
+import { playPop } from './sfx.js';
 
 export const characters = new Map();
 
@@ -20,6 +21,29 @@ const BUBBLE_DURATION = 8000;
 // 콜과 엘리 말풍선이 겹칠 때 나중에 말한 쪽이 위로 오도록,
 // 말할 때마다 z-index를 하나씩 올려서 붙입니다.
 let bubbleStackOrder = 10;
+
+/*
+ * 말풍선을 띄운 채로 두는 모드. AUTO 를 켜면 켜집니다.
+ * 켜져 있는 동안에는 시간이 지나도 사라지지 않고, 다음 대사로 갈아끼워집니다.
+ */
+let bubblesHeld = false;
+
+export function setBubblesHeld(on) {
+  bubblesHeld = Boolean(on);
+
+  for (const character of characters.values()) {
+    if (bubblesHeld) {
+      // 사라질 예정이던 것을 취소합니다.
+      if (character.timer) {
+        clearTimeout(character.timer);
+        character.timer = null;
+      }
+    } else if (character.bubble.style.display === 'block') {
+      // 붙잡기를 풀면, 지금 떠 있는 것부터 평소대로 사라집니다.
+      character.scheduleHide();
+    }
+  }
+}
 
 class ShimejiCharacter {
   constructor(config) {
@@ -74,6 +98,7 @@ class ShimejiCharacter {
   bindEvents() {
     const activate = event => {
       event?.preventDefault?.();
+      playPop();
       showRandomQuote(this, event);
     };
 
@@ -172,7 +197,16 @@ class ShimejiCharacter {
     this.bubble.style.animation = 'bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
 
     if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+
+    // AUTO 로 붙잡아 둔 동안에는 사라지지 않습니다.
+    if (!bubblesHeld) this.scheduleHide();
+  }
+
+  scheduleHide() {
+    if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
+      this.timer = null;
       this.bubble.style.display = 'none';
       this.image.src = this.defaultImage;
     }, BUBBLE_DURATION);
