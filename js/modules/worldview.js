@@ -175,6 +175,19 @@ function jumpTo(position) {
   viewport.style.scrollBehavior = previous;
 }
 
+/*
+ * 양 끝을 반 칸씩 잘라서 세웁니다.
+ *
+ * 칸에 딱 맞춰 세우면 버튼이 네 개 온전히 보여서, 옆으로 더 있다는 걸
+ * 알아채지 못합니다. 반 칸 밀어 두면 가운데 세 개는 온전히,
+ * 양 끝 두 개는 절반만 보여서 밀 수 있다는 게 바로 드러납니다.
+ *
+ * 스크롤할 게 없을 때(looping이 꺼졌을 때)는 밀지 않습니다.
+ */
+function peekOffset() {
+  return looping ? viewport.clientWidth / VISIBLE_SLOTS / 2 : 0;
+}
+
 function primeScroll() {
   if (!looping) {
     listWidth = 0;
@@ -182,7 +195,7 @@ function primeScroll() {
     return;
   }
   listWidth = viewport.scrollWidth / 3;
-  jumpTo(listWidth);
+  jumpTo(listWidth + peekOffset());
 }
 
 function renderTrack() {
