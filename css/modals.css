@@ -18,7 +18,6 @@
 #quote-modal { z-index: 1000; }
 #quote-add-modal { z-index: 1002; }
 #worldview-list-modal { z-index: 1010; }
-#worldview-add-modal { z-index: 1012; }
 #worldview-edit-modal { z-index: 1012; }
 #expression-modal { z-index: 1012; }
 #expression-edit-modal { z-index: 1014; }
@@ -145,20 +144,6 @@
   padding: 4px;
 }
 
-.header-action-btn {
-  background: #3f548a;
-  color: #fff;
-  border: none;
-  padding: 4px 11px;
-  font-size: 11.5px;
-  border-radius: 5px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.header-action-btn:hover { background: #2d3e68; }
-
 .quote-tag-btn {
   display: inline-block;
   padding: 4px 6px;
@@ -210,14 +195,9 @@
   color: #ffffff;
 }
 
-[data-character="shimeji-ellie"] .header-action-btn,
 [data-character="shimeji-ellie"] .modal-input-box button,
 [data-character="shimeji-ellie"] .expression-input-box button {
   background-color: #3E6B75;
-}
-
-[data-character="shimeji-ellie"] .header-action-btn:hover {
-  background-color: #2f545c;
 }
 
 [data-character="shimeji-ellie"] .expression-select-item {
@@ -303,7 +283,13 @@
   font-weight: 600;
 }
 
-.expression-item {
+/*
+ * 표정 목록 한 줄과 세계관 목록 한 줄은 생김새가 완전히 같습니다.
+ * 따로 두면 한쪽만 고치는 일이 생기므로 여기 한 곳에 모아 둡니다.
+ * (세계관 쪽 색깔·선택 표시만 css/worldview.css 에서 덧입힙니다)
+ */
+.expression-item,
+.worldview-row {
   display: flex;
   justify-content: space-between;
   align-items: center;

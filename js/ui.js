@@ -1,3 +1,5 @@
+import { state } from './state.js';
+
 export function $(id) {
   const element = document.getElementById(id);
   if (!element) throw new Error(`필수 요소를 찾을 수 없습니다: #${id}`);
@@ -16,6 +18,42 @@ export function hideModal(id) {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+/*
+ * ['닫기 단추 id', '닫을 모달 id'] 짝을 받아 한 번에 연결합니다.
+ * 대사 쪽과 세계관 쪽이 똑같은 세 줄을 각자 들고 있던 것을 모았습니다.
+ */
+export function bindModalClosers(pairs) {
+  for (const [buttonId, modalId] of pairs) {
+    $(buttonId).addEventListener('click', () => hideModal(modalId));
+  }
+}
+
+export function isModalOpen(id) {
+  return document.getElementById(id)?.classList.contains('is-open');
+}
+
+/*
+ * 저장·삭제처럼 서버를 다녀오는 일을 감쌉니다.
+ *
+ *   - 다녀오는 동안 또 누르는 것을 막습니다 (state.busy)
+ *   - 실패하면 무엇이 실패했는지 그대로 알려 줍니다
+ *
+ * 대사 쪽(modules/modals.js)과 세계관 쪽(modules/worldview.js)에
+ * 같은 함수가 한 벌씩 들어 있던 것을 여기로 모았습니다.
+ */
+export async function runBusy(task, fallbackMessage) {
+  if (state.busy) return;
+  state.busy = true;
+  try {
+    await task();
+  } catch (error) {
+    console.error(error);
+    flashError(`${fallbackMessage}\n\n${error.message || error}`);
+  } finally {
+    state.busy = false;
+  }
+}
+
 export function setLoadingMessage(message) {
   const element = document.getElementById('loading-message');
   if (element) element.textContent = message;
@@ -26,7 +64,8 @@ export function hideLoading() {
   if (overlay) overlay.classList.add('is-hidden');
 }
 
-export function flashError(message) {
+// runBusy 안에서만 씁니다.
+function flashError(message) {
   console.error(message);
   alert(message);
 }

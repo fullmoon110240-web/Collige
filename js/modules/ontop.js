@@ -70,7 +70,7 @@ function makeNotice(onReturn) {
  * requestWindow() 가 준 창이든 시험용 창이든 똑같이 동작하도록,
  * 창 하나만 받아서 처리합니다.
  */
-export function fillWindow(win) {
+function fillWindow(win) {
   const doc = win.document;
 
   doc.title = '콜리지 놀이';

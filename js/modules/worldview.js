@@ -15,7 +15,7 @@ import {
   saveWorldviewImage,
   updateWorldview
 } from '../supabase.js';
-import { $, flashError, hideModal, isHttpUrl, normalizeImageUrl, showModal } from '../ui.js';
+import { $, bindModalClosers, hideModal, isHttpUrl, isModalOpen, normalizeImageUrl, runBusy, showModal } from '../ui.js';
 
 // 화면에 보이는 칸 수. 좌우로 무한히 이어 붙여 순환합니다.
 const VISIBLE_SLOTS = 5;
@@ -519,13 +519,10 @@ function centerOnSelected(fresh = true) {
 /* ------------------------------------------------------------------ */
 
 function bindModalEvents() {
-  const closers = [
+  bindModalClosers([
     ['worldview-list-close-btn', 'worldview-list-modal'],
     ['worldview-edit-close-btn', 'worldview-edit-modal']
-  ];
-  for (const [buttonId, modalId] of closers) {
-    $(buttonId).addEventListener('click', () => hideModal(modalId));
-  }
+  ]);
 
   $('worldview-list-btn').addEventListener('click', () => {
     if (!available) return warnUnavailable();
@@ -715,19 +712,3 @@ function notifyWorldviewChanged() {
   );
 }
 
-function isModalOpen(id) {
-  return document.getElementById(id)?.classList.contains('is-open');
-}
-
-async function runBusy(task, fallbackMessage) {
-  if (state.busy) return;
-  state.busy = true;
-  try {
-    await task();
-  } catch (error) {
-    console.error(error);
-    flashError(`${fallbackMessage}\n\n${error.message || error}`);
-  } finally {
-    state.busy = false;
-  }
-}

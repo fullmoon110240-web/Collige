@@ -11,7 +11,7 @@
  * │  (.github/workflows/deploy.yml 을 쓰면 자동으로 바뀝니다)     │
  * └─────────────────────────────────────────────────────────────┘
  */
-const VERSION = '2026-09-20-12';
+const VERSION = '2026-09-21-1';
 
 const CACHE = `collige-${VERSION}`;
 
@@ -52,7 +52,10 @@ const SHELL = [
   './sfx/pop-4.mp3',
   './sfx/pop-5.mp3',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', event => {
@@ -97,9 +100,15 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     try {
       const fresh = await fetch(request);
-      if (fresh && fresh.ok) {
+
+      /*
+       * 200 일 때만 저장합니다.
+       * 소리·영상은 브라우저가 조각내어(Range) 받아 오는데, 그 답은 206 이고
+       * cache.put 은 206 을 거절합니다. 그대로 두면 잡히지 않은 거절이 쌓입니다.
+       */
+      if (fresh && fresh.status === 200) {
         const cache = await caches.open(CACHE);
-        cache.put(request, fresh.clone());
+        cache.put(request, fresh.clone()).catch(() => { /* 저장 못 해도 화면에는 지장 없습니다 */ });
       }
       return fresh;
     } catch (error) {

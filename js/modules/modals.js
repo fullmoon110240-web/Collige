@@ -13,7 +13,7 @@ import {
   upsertLocalQuote
 } from '../state.js';
 import { createExpression, deleteExpression, updateExpression } from '../supabase.js';
-import { $, hideModal, isHttpUrl, isTemporaryDriveUrl, normalizeImageUrl, quoteDuplicateKey, quoteSortKey, showModal, flashError } from '../ui.js';
+import { $, bindModalClosers, hideModal, isHttpUrl, isModalOpen, isTemporaryDriveUrl, normalizeImageUrl, quoteDuplicateKey, quoteSortKey, runBusy, showModal } from '../ui.js';
 import { getCharacter } from './characters.js';
 import { populateItemSelectList } from './items.js';
 import { isWorldviewAvailable } from './worldview.js';
@@ -182,7 +182,7 @@ export function initializeModals() {
     if (isModalOpen('expression-modal')) renderExpressionList();
   });
 
-  const closers = [
+  bindModalClosers([
     ['modal-close-btn', 'quote-modal'],
     ['quote-add-modal-close-btn', 'quote-add-modal'],
     ['quote-edit-modal-close-btn', 'quote-edit-modal'],
@@ -192,11 +192,7 @@ export function initializeModals() {
     ['item-select-close-btn', 'item-select-modal'],
     ['item-detail-close-btn', 'item-detail-modal'],
     ['worldview-select-close-btn', 'worldview-select-modal']
-  ];
-
-  for (const [buttonId, modalId] of closers) {
-    $(buttonId).addEventListener('click', () => hideModal(modalId));
-  }
+  ]);
 
   document.querySelectorAll('.modal-overlay').forEach(modal => {
     modal.addEventListener('click', event => {
@@ -726,21 +722,30 @@ function confirmTemporaryUrl(url) {
   );
 }
 
+/*
+ * 표정을 넣을 때와 고칠 때가 똑같이 거치던 검사입니다.
+ * 두 곳에 같은 세 줄이 들어 있던 것을 하나로 모았습니다.
+ * (비었는지 알리는 문구만 서로 달라서 그것만 받습니다)
+ */
+function expressionInputOk(name, url, emptyMessage) {
+  if (!name || !url) {
+    alert(emptyMessage);
+    return false;
+  }
+  if (!isHttpUrl(url)) {
+    alert('이미지 URL은 http:// 또는 https://로 시작해야 합니다.');
+    return false;
+  }
+  return confirmTemporaryUrl(url);
+}
+
 async function submitAddExpression() {
   const character = getExpressionCharacter();
   if (!character) return;
 
   const name = $('exp-name-input').value.trim();
   const url = normalizeImageUrl($('exp-url-input').value);
-  if (!name || !url) {
-    alert('이름과 URL을 모두 입력해주세요.');
-    return;
-  }
-  if (!isHttpUrl(url)) {
-    alert('이미지 URL은 http:// 또는 https://로 시작해야 합니다.');
-    return;
-  }
-  if (!confirmTemporaryUrl(url)) return;
+  if (!expressionInputOk(name, url, '이름과 URL을 모두 입력해주세요.')) return;
 
   await runBusy(async () => {
     const row = await createExpression({
@@ -770,15 +775,7 @@ async function submitEditExpression() {
 
   const name = $('exp-edit-name-input').value.trim();
   const url = normalizeImageUrl($('exp-edit-url-input').value);
-  if (!name || !url) {
-    alert('표정 이름과 URL은 비워둘 수 없습니다.');
-    return;
-  }
-  if (!isHttpUrl(url)) {
-    alert('이미지 URL은 http:// 또는 https://로 시작해야 합니다.');
-    return;
-  }
-  if (!confirmTemporaryUrl(url)) return;
+  if (!expressionInputOk(name, url, '표정 이름과 URL은 비워둘 수 없습니다.')) return;
 
   await runBusy(async () => {
     // 대사는 expression_id로만 표정을 가리키므로, 이름과 URL을 고쳐도
@@ -829,19 +826,3 @@ function getActiveCharacter() {
   return state.activeCharacterId ? getCharacter(state.activeCharacterId) : null;
 }
 
-function isModalOpen(id) {
-  return document.getElementById(id)?.classList.contains('is-open');
-}
-
-async function runBusy(task, fallbackMessage) {
-  if (state.busy) return;
-  state.busy = true;
-  try {
-    await task();
-  } catch (error) {
-    console.error(error);
-    flashError(`${fallbackMessage}\n\n${error.message || error}`);
-  } finally {
-    state.busy = false;
-  }
-}

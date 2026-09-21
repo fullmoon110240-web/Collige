@@ -41,16 +41,13 @@ button {
 
 .layout-stage {
   /*
-   * One proportional stage controls the entire composition.
-   * The stage keeps the same landscape ratio and scales as a whole.
-   */
-  /*
-   * 캐릭터 칸을 키우면서 전체가 세로로 길어졌습니다(가로:세로 = 1.9 -> 1.5).
+   * 화면 전체가 이 '무대' 하나입니다. 창 크기가 바뀌면 통째로 비례해 커지고 줄어듭니다.
+   *
    *   aspect-ratio  - 무대 자체의 비율. 960px 일 때 내용 높이와 거의 같습니다.
    *   96vh * 1.2    - 창이 납작할 때 무대를 줄여서 아래가 잘리지 않게 하는 한계
    *
    * 뒤 숫자가 더 작은 이유: 글자 크기 같은 것들은 clamp 로 최소값이 있어서,
-   * 화면이 작아질수록 내용이 상대적으로 세로로 길어집니다(1.34 -> 1.21).
+   * 화면이 작아질수록 내용이 상대적으로 세로로 길어집니다(1.34 -> 1.20).
    * 잘리지 않으려면 가장 길어졌을 때의 비율을 써야 합니다.
    */
   width: min(96vw, calc(96vh * 1.2), 960px);
@@ -62,6 +59,15 @@ button {
   gap: 0;
   flex: 0 0 auto;
   overflow: visible;
+}
+
+/*
+ * 아주 납작한 창(세로 420px 이하)에서는 글자 최소 크기 때문에
+ * 내용이 상대적으로 더 길어져서, 위의 1.2 로도 위아래가 조금 잘립니다.
+ * 그런 창에서만 무대를 조금 더 줄입니다. 평소 크기에는 영향이 없습니다.
+ */
+@media (max-height: 420px) {
+  .layout-stage { width: min(96vw, calc(96vh * 1.08), 960px); }
 }
 
 .shimeji-section {

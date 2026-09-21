@@ -205,17 +205,7 @@
 /* ---- 세계관 모달 ---- */
 /* 겹침 순서는 css/modals.css 한 곳에서 관리합니다. */
 
-.worldview-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  font-size: 11.5px;
-  background: #fafafa;
-  border-radius: 6px;
-  margin-bottom: 5px;
-}
+/* 한 줄의 기본 생김새는 .expression-item 과 함께 css/modals.css 에 있습니다. */
 
 .worldview-row.is-active {
   background: #eef2fb;
@@ -269,23 +259,12 @@
 }
 
 /* 세계관 모달은 캐릭터 색이 아니라 세계관 색(#3F5F80)을 씁니다. */
-#worldview-add-modal .modal-input-box button,
 #worldview-edit-modal .modal-input-box button {
   background: #3F5F80;
 }
 
-#worldview-add-modal .modal-input-box input:focus,
 #worldview-edit-modal .modal-input-box input:focus {
   border-color: #3F5F80;
-}
-
-/* 세계관 목록의 '표정' 버튼은 캐릭터 색이 아니라 세계관 색을 씁니다. */
-#worldview-list-modal .header-action-btn {
-  background: #3F5F80;
-}
-
-#worldview-list-modal .header-action-btn:hover {
-  background: #33506B;
 }
 
 /* ---- 세계관 목록 안의 '추가' 줄 ---- */

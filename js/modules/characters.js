@@ -13,7 +13,8 @@ import { createQuote, deleteQuote, updateQuote } from '../supabase.js';
 import { $ } from '../ui.js';
 import { playPop } from './sfx.js';
 
-export const characters = new Map();
+// 이 파일 안에서만 씁니다. 바깥에서는 getCharacter() 로 가져갑니다.
+const characters = new Map();
 
 // 말풍선이 떠 있는 시간. 예전 4초에서 두 배로 늘렸습니다.
 const BUBBLE_DURATION = 8000;
