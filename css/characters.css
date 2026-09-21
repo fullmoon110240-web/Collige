@@ -257,6 +257,42 @@
 #bubble-ellie::after {
   content: none;
 }
+
+/*
+ * 좁은 화면(휴대폰).
+ *
+ * 말풍선 너비의 최소값(140px)과 꼬리 크기가 px 로 못박혀 있어서,
+ * 화면이 좁아져도 그대로 남습니다. 그래서 무대 대비 25% 이던 말풍선이
+ * 휴대폰에서는 37% 까지 커지고, 꼬리도 유난히 커 보입니다.
+ * 넓은 화면은 그대로 두고 좁은 화면에서만 줄입니다.
+ */
+@media (max-width: 560px) {
+  .speech-bubble-box {
+    /* 140px -> 82px 안팎. 무대 대비 25% 로 데스크톱과 같은 비율이 됩니다. */
+    --bubble-width: clamp(78px, 22cqw, 140px);
+    padding: clamp(7px, 2.2cqw, 20px) clamp(6px, 1.5cqw, 14px);
+  }
+
+  /* 꼬리는 절반으로 (7px -> 3.5px, 12px -> 6px). */
+  #bubble-cole::before,
+  #bubble-ellie::before {
+    border-top-width: 3.5px;
+    border-bottom-width: 3.5px;
+  }
+
+  #bubble-cole::before {
+    top: 5px;
+    left: -6px;
+    border-right-width: 6px;
+    filter: drop-shadow(-2px 1.5px 1.5px rgba(31, 55, 73, 0.28));
+  }
+
+  #bubble-ellie::before {
+    right: -6px;
+    border-left-width: 6px;
+    filter: drop-shadow(2px 1.5px 1.5px rgba(34, 66, 73, 0.28));
+  }
+}
 .card-btn-group {
   display: flex;
   width: 100%;

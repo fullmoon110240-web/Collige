@@ -4,6 +4,9 @@
  * 앱스스크립트 사이드바에 있던 재생기를 옮겨 온 것입니다.
  * 판(vinyl)과 앨범 표지는 뺐습니다. 표지 주소가 만료되는 임시 주소였고,
  * 좁은 막대에는 들어가지도 않기 때문입니다.
+ *
+ * 노래는 ▶ 를 눌러야만 나옵니다. 저절로 트는 기능은 두지 않습니다.
+ * (브라우저가 막는 경우가 많아 되레 '왜 안 나오지' 하게 만들었습니다)
  */
 
 const SONG = {
@@ -53,9 +56,6 @@ function updateProgress() {
 }
 
 function togglePlay() {
-  // 사람이 직접 정했으니, 자동 재생은 더 기다리지 않습니다.
-  stopWaitingForFirstTouch();
-
   if (audio.paused) {
     wantPlaying = true;
     // 사람이 직접 눌렀으면 다시 붙여 보는 횟수를 되돌립니다.
@@ -93,50 +93,6 @@ function toggleMute() {
     volumeSlider.value = '0';
     applyVolume(0);
   }
-}
-
-/* ------------------------------------------------------------ 자동 재생 */
-
-/*
- * 브라우저는 사람이 아무것도 하지 않은 상태에서 소리가 나는 걸 막습니다.
- *
- * 여기서 조심할 게 하나 있습니다. mousemove 는 브라우저가 '사람이 조작했다'로
- * 쳐 주지 않습니다. 그래서 '첫 조작 때 한 번만 시도하고 끝'으로 두면,
- * 거의 언제나 그 한 번을 마우스 움직임에 써 버리고 막힌 채 끝나서
- * 노래가 영영 시작되지 않습니다. 실제로 그런 상태였습니다.
- *
- * 그래서 **성공할 때까지** 기다립니다.
- * 다만 mousemove 는 1초에도 수십 번 오므로 한 번만 해 보고 손을 뗍니다.
- */
-const START_EVENTS = ['mousemove', 'pointerdown', 'keydown', 'touchstart'];
-
-// 앞의 시도가 아직 끝나지 않았으면 겹쳐 부르지 않습니다.
-let trying = false;
-
-function stopWaitingForFirstTouch() {
-  for (const type of START_EVENTS) window.removeEventListener(type, tryAutoplay);
-}
-
-function tryAutoplay(event) {
-  if (trying || !audio.paused) return;
-
-  /*
-   * 재생바를 직접 누른 것이면 여기서 틀지 않습니다.
-   *
-   * 누르면 pointerdown 이 먼저 오고 click 이 뒤따릅니다.
-   * 여기서 먼저 틀어 버리면, 이어지는 click 이 '이미 나오는 중'으로 보고
-   * 도로 멈춰서 첫 누름이 아무 일도 안 한 것처럼 보입니다.
-   */
-  if (event && root && root.contains(event.target)) return;
-
-  // 마우스 움직임은 어차피 대개 막히므로 한 번만 해 봅니다.
-  if (event && event.type === 'mousemove') window.removeEventListener('mousemove', tryAutoplay);
-
-  trying = true;
-  audio.play().then(
-    () => { wantPlaying = true; stopWaitingForFirstTouch(); },
-    () => { trying = false; }        // 아직 막혀 있습니다. 다음 조작 때 다시.
-  );
 }
 
 /* --------------------------------------------------------- 끊겼을 때 */
@@ -243,10 +199,4 @@ export function initializeMusicPlayer() {
   root.querySelector('.music-mute').addEventListener('click', toggleMute);
   progress.addEventListener('click', seek);
   volumeSlider.addEventListener('input', () => applyVolume(Number(volumeSlider.value)));
-
-  // once 를 쓰지 않습니다. 재생바를 누른 경우엔 그냥 넘겨야 하는데,
-  // once 면 넘기든 말든 그 한 번으로 listener 가 사라집니다.
-  for (const type of START_EVENTS) {
-    window.addEventListener(type, tryAutoplay, { passive: true });
-  }
 }
