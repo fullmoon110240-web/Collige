@@ -276,7 +276,7 @@
      * 위 한계를 140px 로 둔 덕에, 화면이 넓어져 이 규칙이 꺼지는 560px 지점에서
      * 넓은 화면 값(140px)과 정확히 이어집니다. 경계에서 크기가 튀지 않습니다.
      */
-    --bubble-width: clamp(96px, 29.5cqw, 140px);
+    --bubble-width: clamp(88px, 26.7cqw, 140px);
     padding: clamp(7px, 2.2cqw, 20px) clamp(6px, 1.5cqw, 14px);
   }
 
